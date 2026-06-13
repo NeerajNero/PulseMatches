@@ -1,0 +1,42 @@
+{
+  "name": "matchflow-arena",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "local:up": "docker-compose up -d postgres redis backend frontend",
+    "local:infra:up": "docker-compose up -d postgres redis",
+    "local:down": "docker-compose down",
+    "local:config": "docker-compose config",
+    "local:logs": "docker-compose logs -f backend frontend",
+    "docker:up": "docker-compose up -d postgres redis backend frontend",
+    "docker:down": "docker-compose down",
+    "docker:restart": "pnpm docker:down && pnpm docker:up",
+    "docker:build": "docker-compose build backend frontend",
+    "docker:logs": "docker-compose logs -f",
+    "docker:ps": "docker-compose ps",
+    "docker:migrate": "docker-compose run --rm backend-migrate",
+    "docker:seed": "docker-compose run --rm backend-seed",
+    "docker:smoke": "docker-compose run --rm smoke",
+    "docker:notifications:process": "docker-compose run --rm notifications-process",
+    "docker:payments:reconcile": "docker-compose run --rm payments-reconcile",
+    "docker:backend:shell": "docker-compose exec backend sh",
+    "docker:frontend:shell": "docker-compose exec frontend sh",
+    "backend:dev": "pnpm --filter @matchflow/backend dev",
+    "frontend:dev": "pnpm --filter @matchflow/frontend dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "generate:openapi": "node scripts/export-openapi.mjs",
+    "generate:sdk": "openapi-generator-cli generate -i openapi.json -g typescript-fetch -o libs/client_sdk",
+    "smoke:mvp": "node scripts/mvp-smoke.mjs",
+    "notifications:process": "pnpm --filter @matchflow/backend notifications:process",
+    "notifications:test-email": "pnpm --filter @matchflow/backend notifications:test-email",
+    "payments:reconcile": "pnpm --filter @matchflow/backend payments:reconcile",
+    "verify:mvp": "pnpm --filter @matchflow/backend prisma:generate && pnpm --filter @matchflow/backend typecheck && pnpm --filter @matchflow/backend lint && pnpm --filter @matchflow/backend build && pnpm --filter @matchflow/frontend typecheck && pnpm --filter @matchflow/frontend lint && pnpm --filter @matchflow/frontend build && pnpm typecheck && pnpm lint && pnpm build"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.15.3",
+    "typescript": "^5.6.3"
+  }
+}

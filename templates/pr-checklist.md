@@ -1,0 +1,27 @@
+# PR Checklist
+
+- Docker services required for this change are documented.
+- Feature has an approved plan or approval file.
+- Changes are scoped to the approved feature plan.
+- Migrations are included for schema changes.
+- Prisma client or ORM generated artifacts are updated.
+- Backend DTOs, Swagger, and validation are updated.
+- SDK is regenerated after API changes.
+- API integration happened after implementation verification.
+- Web/mobile frontend uses generated SDK types.
+- Frontend target is documented as web, mobile, or both.
+- Auth and permissions are covered.
+- Empty, loading, error, and success states are handled.
+- Tests or manual verification are listed.
+- New environment variables are added to `.env.example`.
+- Documentation is updated for new commands or behavior.
+- Backend follows repository -> DB service -> API service boundaries.
+- Controllers do not contain raw Prisma queries or large inline Swagger blocks.
+- Frontend uses reusable `components/ui` or `components/custom` when a pattern already exists.
+- Routes, query keys, cookie names, and repeated constants are centralized.
+- Mobile app config, EAS config, permissions, native plugins, and device verification are updated when native behavior changes.
+- Push notifications use device-token tables, provider abstractions, category route maps, and queued fan-out when mobile push is in scope.
+- Background jobs include typed payloads, retries/backoff, event logging, Bull Board visibility, and DLQ handling when needed.
+- SQL functions, triggers, materialized views, and seed data are documented and migration-tested.
+- Health, metrics, logs, and dashboards/runbooks are updated when operational behavior changes.
+- External provider integrations isolate config, retries, status mapping, webhooks, and cleanup behavior.

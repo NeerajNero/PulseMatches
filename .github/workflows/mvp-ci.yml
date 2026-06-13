@@ -1,0 +1,178 @@
+name: MVP CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.15.4"
+  SERVICE_NAME: matchflow-arena-api
+  PORT: "3010"
+  NODE_ENV: test
+  APP_VERSION: "0.1.0"
+  CORS_ORIGINS: http://localhost:3002
+  FE_APP_URL: http://localhost:3002
+  NEXT_PUBLIC_APP_NAME: MatchFlow Arena
+  NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:3010
+  DATABASE_URL: postgresql://matchflow:matchflow_dev_password@127.0.0.1:55432/matchflow_arena
+  POSTGRES_DB: matchflow_arena
+  POSTGRES_USER: matchflow
+  POSTGRES_PASSWORD: matchflow_dev_password
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: "55432"
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: "56379"
+  REDIS_PASSWORD: ""
+  REDIS_TLS_ENABLED: "false"
+  JWT_ACCESS_TOKEN_SECRET: ci_access_token_secret_replace_in_real_deployments
+  JWT_ACCESS_TOKEN_EXPIRY: 15m
+  JWT_REFRESH_TOKEN_SECRET: ci_refresh_token_secret_replace_in_real_deployments
+  JWT_REFRESH_TOKEN_EXPIRY: 7d
+  API_URL: http://127.0.0.1:3010
+  NOTIFICATION_PROVIDER: noop
+  NOTIFICATION_FROM_EMAIL: notifications@matchflow.local
+  NOTIFICATION_FROM_NAME: MatchFlow Arena
+  NOTIFICATION_PROCESS_LIMIT: "50"
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_USER: ""
+  SMTP_PASS: ""
+  SMTP_REQUIRE_TLS: "false"
+  SMTP_REJECT_UNAUTHORIZED: "true"
+  SMTP_ALLOW_UNAUTH: "false"
+  PAYMENT_PROVIDER: mock
+  PAYMENT_DEFAULT_CURRENCY: INR
+  PAYMENT_MOCK_CHECKOUT_BASE_URL: http://localhost:3002
+  PAYMENT_INTENT_EXPIRY_MINUTES: "30"
+  PAYMENT_WEBHOOK_SECRET: ""
+  RAZORPAY_KEY_ID: ""
+  RAZORPAY_KEY_SECRET: ""
+  RAZORPAY_WEBHOOK_SECRET: ""
+  RAZORPAY_CHECKOUT_NAME: MatchFlow Arena
+  RAZORPAY_CHECKOUT_DESCRIPTION: Tournament registration fee
+
+jobs:
+  mvp-readiness:
+    name: Generate, validate, build, and smoke
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: matchflow_arena
+          POSTGRES_USER: matchflow
+          POSTGRES_PASSWORD: matchflow_dev_password
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U matchflow -d matchflow_arena"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 56379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check smoke script syntax
+        run: node --check scripts/mvp-smoke.mjs
+
+      - name: Generate Prisma client
+        run: pnpm --filter @matchflow/backend prisma:generate
+
+      - name: Deploy database migrations
+        run: pnpm --filter @matchflow/backend prisma:deploy
+
+      - name: Seed disposable database
+        run: pnpm --filter @matchflow/backend db:seed
+
+      - name: Backend typecheck
+        run: pnpm --filter @matchflow/backend typecheck
+
+      - name: Backend lint
+        run: pnpm --filter @matchflow/backend lint
+
+      - name: Backend build
+        run: pnpm --filter @matchflow/backend build
+
+      - name: Frontend typecheck
+        run: pnpm --filter @matchflow/frontend typecheck
+
+      - name: Frontend lint
+        run: pnpm --filter @matchflow/frontend lint
+
+      - name: Frontend build
+        run: pnpm --filter @matchflow/frontend build
+
+      - name: Workspace typecheck
+        run: pnpm typecheck
+
+      - name: Workspace lint
+        run: pnpm lint
+
+      - name: Workspace build
+        run: pnpm build
+
+      - name: Start backend for smoke
+        run: |
+          pnpm --filter @matchflow/backend start > backend-ci.log 2>&1 &
+          echo "$!" > backend-ci.pid
+
+      - name: Wait for backend health
+        run: |
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3010/health >/dev/null; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become healthy"
+          cat backend-ci.log
+          exit 1
+
+      - name: MVP API smoke
+        run: pnpm smoke:mvp
+
+      - name: Process queued notifications
+        env:
+          NOTIFICATION_PROCESS_REQUIRE_WORK: "true"
+        run: pnpm --filter @matchflow/backend notifications:process
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend-ci.pid ]; then
+            kill "$(cat backend-ci.pid)" || true
+          fi
+          if [ -f backend-ci.log ]; then
+            tail -200 backend-ci.log
+          fi

@@ -1,0 +1,53 @@
+{
+  "name": "@matchflow/backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "build": "nest build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} prisma migrate dev",
+    "prisma:deploy": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} prisma migrate deploy",
+    "prisma:studio": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} prisma studio",
+    "db:seed": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} ts-node prisma/seed.ts",
+    "notifications:process": "ts-node -r tsconfig-paths/register src/scripts/process-notifications.ts",
+    "notifications:test-email": "ts-node -r tsconfig-paths/register src/scripts/send-test-notification-email.ts",
+    "payments:reconcile": "ts-node -r tsconfig-paths/register src/scripts/reconcile-payments.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.7",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.7",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/platform-express": "^10.4.7",
+    "@nestjs/swagger": "^8.0.7",
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "helmet": "^7.2.0",
+    "nodemailer": "^8.0.10",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.5",
+    "@nestjs/schematics": "^10.2.3",
+    "@nestjs/testing": "^10.4.7",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.8.6",
+    "@types/nodemailer": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.12.2",
+    "@typescript-eslint/parser": "^8.12.2",
+    "eslint": "^8.57.1",
+    "prisma": "^5.22.0",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.3"
+  }
+}

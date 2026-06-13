@@ -1,0 +1,11 @@
+node_modules
+apps/*/node_modules
+libs/*/node_modules
+apps/backend/dist
+apps/frontend/.next
+.next
+.git
+.DS_Store
+*.log
+coverage
+tmp

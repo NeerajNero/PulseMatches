@@ -1,0 +1,960 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum RoleType {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
+enum OrganizerVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OrganizerProfileStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RefreshTokenStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum CatalogStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TournamentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  BLOCKED
+}
+
+enum TournamentVisibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+enum TournamentCategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TournamentFormatType {
+  KNOCKOUT
+  ROUND_ROBIN
+  LEAGUE
+  FRIENDLY
+  CUSTOM
+}
+
+enum ParticipantType {
+  SINGLES
+  DOUBLES
+  TEAM
+}
+
+enum GenderType {
+  OPEN
+  MALE
+  FEMALE
+  MIXED
+}
+
+enum TournamentMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+enum RegistrationPaymentMode {
+  OFFLINE
+  FREE
+  ONLINE_PROVIDER
+}
+
+enum RegistrationPaymentStatus {
+  NOT_REQUIRED
+  PENDING_OFFLINE
+  PAID
+  FAILED
+  REFUNDED
+  WAIVED
+}
+
+enum PaymentProvider {
+  MANUAL
+  MOCK
+  RAZORPAY
+  FUTURE_PROVIDER
+}
+
+enum PaymentIntentMode {
+  ONLINE
+  OFFLINE
+  FREE
+}
+
+enum PaymentIntentStatus {
+  CREATED
+  REQUIRES_ACTION
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentAttemptStatus {
+  STARTED
+  REDIRECTED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentRefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  MANUAL_RECORDED
+}
+
+enum PaymentReconciliationStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+enum ParticipantSource {
+  REGISTRATION
+  MANUAL
+}
+
+enum RosterParticipantStatus {
+  ACTIVE
+  WITHDRAWN
+  DISQUALIFIED
+}
+
+enum TeamStatus {
+  ACTIVE
+  WITHDRAWN
+  DISQUALIFIED
+}
+
+enum TeamMemberRole {
+  CAPTAIN
+  PLAYER
+  SUBSTITUTE
+}
+
+enum FixtureFormat {
+  KNOCKOUT
+  ROUND_ROBIN
+}
+
+enum FixtureEntrantType {
+  PARTICIPANT
+  TEAM
+}
+
+enum FixtureSetStatus {
+  DRAFT
+  GENERATED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum FixtureRoundStage {
+  ROUND_ROBIN
+  ROUND_OF_32
+  ROUND_OF_16
+  QUARTER_FINAL
+  SEMI_FINAL
+  FINAL
+  THIRD_PLACE
+}
+
+enum MatchStatus {
+  UNSCHEDULED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  POSTPONED
+  CANCELLED
+}
+
+enum NotificationType {
+  REGISTRATION_CREATED
+  REGISTRATION_APPROVED
+  REGISTRATION_REJECTED
+  REGISTRATION_CANCELLED
+  RESULTS_PUBLISHED
+  MATCH_SCHEDULE_UPDATED
+  PAYMENT_MARKED_PAID
+  PAYMENT_MARKED_FAILED
+  PAYMENT_WAIVED
+}
+
+enum NotificationChannel {
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String         @unique @db.VarChar(320)
+  passwordHash String         @map("password_hash")
+  displayName  String         @map("display_name") @db.VarChar(160)
+  status       UserStatus     @default(ACTIVE)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  roles             UserRole[]
+  organizerProfile  OrganizerProfile?
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]          @relation("AuditActor")
+  registrations     Registration[]
+  paymentRecords    PaymentRecord[] @relation("PaymentUser")
+  verifiedPaymentRecords PaymentRecord[] @relation("PaymentVerifier")
+  paymentIntents    PaymentIntent[]
+  paymentRefunds    PaymentRefund[] @relation("PaymentRefundUser")
+  requestedPaymentRefunds PaymentRefund[] @relation("PaymentRefundRequester")
+  processedPaymentRefunds PaymentRefund[] @relation("PaymentRefundProcessor")
+  participants      Participant[]
+  teamMembers       TeamMember[]
+  notificationOutbox NotificationOutbox[] @relation("NotificationRecipient")
+
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      RoleType
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, role])
+  @@index([role])
+  @@map("user_roles")
+}
+
+model OrganizerProfile {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  userId             String                      @unique @map("user_id") @db.Uuid
+  organizationName   String                      @map("organization_name") @db.VarChar(180)
+  slug               String                      @unique @db.VarChar(220)
+  contactEmail       String                      @map("contact_email") @db.VarChar(320)
+  contactPhone       String?                     @map("contact_phone") @db.VarChar(40)
+  verificationStatus OrganizerVerificationStatus @default(PENDING) @map("verification_status")
+  status             OrganizerProfileStatus      @default(ACTIVE)
+  createdAt          DateTime                    @default(now()) @map("created_at")
+  updatedAt          DateTime                    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tournaments Tournament[]
+
+  @@index([verificationStatus])
+  @@index([status])
+  @@map("organizer_profiles")
+}
+
+model Sport {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @db.VarChar(120)
+  slug      String        @unique @db.VarChar(160)
+  status    CatalogStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  tournaments Tournament[]
+
+  @@index([status])
+  @@map("sports")
+}
+
+model City {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(120)
+  slug        String        @unique @db.VarChar(160)
+  countryCode String        @default("IN") @map("country_code") @db.VarChar(2)
+  status      CatalogStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  venues      Venue[]
+  tournaments Tournament[]
+
+  @@index([status])
+  @@map("cities")
+}
+
+model Venue {
+  id        String        @id @default(uuid()) @db.Uuid
+  cityId    String        @map("city_id") @db.Uuid
+  name      String        @db.VarChar(180)
+  slug      String        @unique @db.VarChar(220)
+  address   String        @db.VarChar(320)
+  latitude  Decimal?      @db.Decimal(9, 6)
+  longitude Decimal?      @db.Decimal(9, 6)
+  status    CatalogStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  city        City         @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  tournaments Tournament[]
+
+  @@index([cityId])
+  @@index([status])
+  @@map("venues")
+}
+
+model Tournament {
+  id                    String               @id @default(uuid()) @db.Uuid
+  organizerProfileId    String               @map("organizer_profile_id") @db.Uuid
+  sportId               String               @map("sport_id") @db.Uuid
+  cityId                String               @map("city_id") @db.Uuid
+  venueId               String?              @map("venue_id") @db.Uuid
+  title                 String               @db.VarChar(220)
+  slug                  String               @unique @db.VarChar(260)
+  shortDescription      String?              @map("short_description") @db.VarChar(300)
+  description           String?
+  status                TournamentStatus     @default(DRAFT)
+  visibility            TournamentVisibility @default(PUBLIC)
+  startsAt              DateTime             @map("starts_at")
+  endsAt                DateTime             @map("ends_at")
+  registrationOpensAt   DateTime?            @map("registration_opens_at")
+  registrationClosesAt  DateTime?            @map("registration_closes_at")
+  maxParticipants       Int?                 @map("max_participants")
+  publishedAt           DateTime?            @map("published_at")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  organizerProfile OrganizerProfile     @relation(fields: [organizerProfileId], references: [id], onDelete: Restrict)
+  sport            Sport                @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  city             City                 @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  venue            Venue?               @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  categories       TournamentCategory[]
+  media            TournamentMedia[]
+  registrations    Registration[]
+  paymentRecords   PaymentRecord[]
+  paymentIntents   PaymentIntent[]
+  paymentEvents    PaymentEvent[]
+  paymentRefunds    PaymentRefund[]
+  participants     Participant[]
+  teams            Team[]
+  fixtureSets      FixtureSet[]
+  matches          Match[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([cityId])
+  @@index([sportId])
+  @@index([status])
+  @@index([visibility])
+  @@index([startsAt])
+  @@index([status, visibility, startsAt])
+  @@map("tournaments")
+}
+
+model TournamentCategory {
+  id               String                   @id @default(uuid()) @db.Uuid
+  tournamentId     String                   @map("tournament_id") @db.Uuid
+  name             String                   @db.VarChar(160)
+  code             String                   @db.VarChar(120)
+  formatType       TournamentFormatType     @map("format_type")
+  participantType  ParticipantType          @map("participant_type")
+  genderType       GenderType               @default(OPEN) @map("gender_type")
+  minAge           Int?                     @map("min_age")
+  maxAge           Int?                     @map("max_age")
+  entryFeeAmount   Int                      @default(0) @map("entry_fee_amount")
+  entryFeeCurrency String                   @default("INR") @map("entry_fee_currency") @db.VarChar(3)
+  capacity         Int?
+  status           TournamentCategoryStatus @default(ACTIVE)
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  registrations Registration[]
+  paymentRecords PaymentRecord[]
+  paymentIntents PaymentIntent[]
+  paymentEvents  PaymentEvent[]
+  paymentRefunds PaymentRefund[]
+  participants  Participant[]
+  teams         Team[]
+  fixtureSets   FixtureSet[]
+  matches       Match[]
+  notificationOutbox NotificationOutbox[]
+
+  @@unique([tournamentId, code])
+  @@index([tournamentId])
+  @@index([status])
+  @@map("tournament_categories")
+}
+
+model TournamentMedia {
+  id           String              @id @default(uuid()) @db.Uuid
+  tournamentId String              @map("tournament_id") @db.Uuid
+  type         TournamentMediaType
+  url          String
+  altText      String?             @map("alt_text") @db.VarChar(220)
+  sortOrder    Int                 @default(0) @map("sort_order")
+  metadata     Json?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  @@index([tournamentId])
+  @@index([sortOrder])
+  @@map("tournament_media")
+}
+
+model Registration {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  userId               String                    @map("user_id") @db.Uuid
+  tournamentId         String                    @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?                   @map("tournament_category_id") @db.Uuid
+  status               RegistrationStatus        @default(PENDING)
+  paymentMode          RegistrationPaymentMode   @map("payment_mode")
+  paymentStatus        RegistrationPaymentStatus @map("payment_status")
+  feeAmount            Int                       @default(0) @map("fee_amount")
+  feeCurrency          String                    @default("INR") @map("fee_currency") @db.VarChar(3)
+  playerName           String                    @map("player_name") @db.VarChar(160)
+  phone                String?                   @db.VarChar(40)
+  notes                String?                   @db.VarChar(500)
+  registeredAt         DateTime                  @default(now()) @map("registered_at")
+  cancelledAt          DateTime?                 @map("cancelled_at")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tournament         Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  participant        Participant?
+  paymentRecord      PaymentRecord?
+  paymentIntents     PaymentIntent[]
+  paymentAttempts    PaymentAttempt[]
+  paymentEvents      PaymentEvent[]
+  paymentRefunds     PaymentRefund[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([tournamentId])
+  @@index([tournamentId, status])
+  @@index([tournamentCategoryId])
+  @@index([tournamentCategoryId, status])
+  @@index([status])
+  @@map("registrations")
+}
+
+model PaymentRecord {
+  id                        String                    @id @default(uuid()) @db.Uuid
+  registrationId            String                    @unique @map("registration_id") @db.Uuid
+  tournamentId              String                    @map("tournament_id") @db.Uuid
+  tournamentCategoryId      String?                   @map("tournament_category_id") @db.Uuid
+  userId                    String?                   @map("user_id") @db.Uuid
+  provider                  PaymentProvider           @default(MANUAL)
+  mode                      RegistrationPaymentMode
+  status                    RegistrationPaymentStatus
+  amount                    Int                       @default(0)
+  currency                  String                    @default("INR") @db.VarChar(3)
+  reference                 String?                   @db.VarChar(160)
+  internalNotes             String?                   @map("internal_notes") @db.VarChar(1000)
+  paidAt                    DateTime?                 @map("paid_at")
+  verifiedByOrganizerUserId String?                   @map("verified_by_organizer_user_id") @db.Uuid
+  createdAt                 DateTime                  @default(now()) @map("created_at")
+  updatedAt                 DateTime                  @updatedAt @map("updated_at")
+
+  registration            Registration        @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  tournament              Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory      TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  user                    User?               @relation("PaymentUser", fields: [userId], references: [id], onDelete: SetNull)
+  verifiedByOrganizerUser User?               @relation("PaymentVerifier", fields: [verifiedByOrganizerUserId], references: [id], onDelete: SetNull)
+  paymentIntents          PaymentIntent[]
+  paymentEvents           PaymentEvent[]
+  paymentRefunds          PaymentRefund[]
+
+  @@index([registrationId])
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+  @@map("payment_records")
+}
+
+model PaymentIntent {
+  id                   String              @id @default(uuid()) @db.Uuid
+  registrationId       String              @map("registration_id") @db.Uuid
+  paymentRecordId      String?             @map("payment_record_id") @db.Uuid
+  tournamentId         String              @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?             @map("tournament_category_id") @db.Uuid
+  userId               String              @map("user_id") @db.Uuid
+  provider             PaymentProvider
+  mode                 PaymentIntentMode
+  status               PaymentIntentStatus
+  amount               Int
+  currency             String              @default("INR") @db.VarChar(3)
+  providerIntentId     String?             @map("provider_intent_id") @db.VarChar(160)
+  providerCheckoutUrl  String?             @map("provider_checkout_url") @db.VarChar(1000)
+  idempotencyKey       String?             @unique @map("idempotency_key") @db.VarChar(220)
+  expiresAt            DateTime?           @map("expires_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  registration       Registration        @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  paymentRecord      PaymentRecord?      @relation(fields: [paymentRecordId], references: [id], onDelete: SetNull)
+  tournament         Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  attempts           PaymentAttempt[]
+  events             PaymentEvent[]
+  refunds            PaymentRefund[]
+
+  @@index([registrationId])
+  @@index([paymentRecordId])
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+  @@map("payment_intents")
+}
+
+model PaymentAttempt {
+  id                String               @id @default(uuid()) @db.Uuid
+  paymentIntentId   String               @map("payment_intent_id") @db.Uuid
+  registrationId    String               @map("registration_id") @db.Uuid
+  provider          PaymentProvider
+  status            PaymentAttemptStatus
+  providerAttemptId String?              @map("provider_attempt_id") @db.VarChar(160)
+  errorCode         String?              @map("error_code") @db.VarChar(120)
+  errorMessage      String?              @map("error_message") @db.VarChar(500)
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  paymentIntent PaymentIntent @relation(fields: [paymentIntentId], references: [id], onDelete: Restrict)
+  registration  Registration  @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@index([paymentIntentId])
+  @@index([registrationId])
+  @@index([provider])
+  @@index([status])
+  @@map("payment_attempts")
+}
+
+model PaymentEvent {
+  id                String           @id @default(uuid()) @db.Uuid
+  paymentIntentId   String?          @map("payment_intent_id") @db.Uuid
+  paymentRecordId   String?          @map("payment_record_id") @db.Uuid
+  registrationId    String?          @map("registration_id") @db.Uuid
+  tournamentId      String?          @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?       @map("tournament_category_id") @db.Uuid
+  provider          PaymentProvider
+  eventType         String           @map("event_type") @db.VarChar(160)
+  providerEventId   String?          @map("provider_event_id") @db.VarChar(160)
+  payload           Json
+  signatureValid    Boolean?         @map("signature_valid")
+  processedAt       DateTime?        @map("processed_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  paymentIntent PaymentIntent? @relation(fields: [paymentIntentId], references: [id], onDelete: SetNull)
+  paymentRecord PaymentRecord? @relation(fields: [paymentRecordId], references: [id], onDelete: SetNull)
+  registration  Registration?  @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  tournament    Tournament?    @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: SetNull)
+
+  @@index([paymentIntentId])
+  @@index([paymentRecordId])
+  @@index([registrationId])
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([provider])
+  @@index([providerEventId])
+  @@index([eventType])
+  @@map("payment_events")
+}
+
+model PaymentRefund {
+  id                String              @id @default(uuid()) @db.Uuid
+  paymentRecordId   String              @map("payment_record_id") @db.Uuid
+  paymentIntentId   String?             @map("payment_intent_id") @db.Uuid
+  registrationId    String              @map("registration_id") @db.Uuid
+  tournamentId      String              @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?          @map("tournament_category_id") @db.Uuid
+  userId            String?             @map("user_id") @db.Uuid
+  provider          PaymentProvider
+  status            PaymentRefundStatus
+  amount            Int
+  currency          String              @default("INR") @db.VarChar(3)
+  reason            String?             @db.VarChar(500)
+  internalNotes     String?             @map("internal_notes") @db.VarChar(1000)
+  providerRefundId  String?             @map("provider_refund_id") @db.VarChar(160)
+  requestedByUserId String?             @map("requested_by_user_id") @db.Uuid
+  processedByUserId String?             @map("processed_by_user_id") @db.Uuid
+  processedAt       DateTime?           @map("processed_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  paymentRecord   PaymentRecord  @relation(fields: [paymentRecordId], references: [id], onDelete: Restrict)
+  paymentIntent   PaymentIntent? @relation(fields: [paymentIntentId], references: [id], onDelete: SetNull)
+  registration    Registration   @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  tournament      Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  user            User?          @relation("PaymentRefundUser", fields: [userId], references: [id], onDelete: SetNull)
+  requestedByUser User?          @relation("PaymentRefundRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  processedByUser User?          @relation("PaymentRefundProcessor", fields: [processedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([paymentRecordId])
+  @@index([paymentIntentId])
+  @@index([registrationId])
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+  @@map("payment_refunds")
+}
+
+model PaymentReconciliationRun {
+  id           String                      @id @default(uuid()) @db.Uuid
+  provider     PaymentProvider
+  status       PaymentReconciliationStatus @default(STARTED)
+  startedAt    DateTime                    @default(now()) @map("started_at")
+  completedAt  DateTime?                   @map("completed_at")
+  checkedCount Int                         @default(0) @map("checked_count")
+  updatedCount Int                         @default(0) @map("updated_count")
+  failedCount  Int                         @default(0) @map("failed_count")
+  summary      Json?
+  error        String?                     @db.VarChar(1000)
+
+  @@index([provider])
+  @@index([status])
+  @@index([startedAt])
+  @@map("payment_reconciliation_runs")
+}
+
+model Participant {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  tournamentId         String                  @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?                 @map("tournament_category_id") @db.Uuid
+  registrationId       String?                 @unique @map("registration_id") @db.Uuid
+  userId               String?                 @map("user_id") @db.Uuid
+  displayName          String                  @map("display_name") @db.VarChar(160)
+  email                String?                 @db.VarChar(320)
+  phone                String?                 @db.VarChar(40)
+  source               ParticipantSource
+  status               RosterParticipantStatus @default(ACTIVE)
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+
+  tournament         Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  registration       Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  user               User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  teamMembers        TeamMember[]
+  matchEntrants      MatchEntrant[]
+  wonParticipantMatches Match[]           @relation("MatchWinnerParticipant")
+
+  @@index([tournamentId])
+  @@index([tournamentId, status])
+  @@index([tournamentCategoryId])
+  @@index([registrationId])
+  @@index([userId])
+  @@index([status])
+  @@map("participants")
+}
+
+model Team {
+  id                   String     @id @default(uuid()) @db.Uuid
+  tournamentId         String     @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?    @map("tournament_category_id") @db.Uuid
+  name                 String     @db.VarChar(180)
+  status               TeamStatus @default(ACTIVE)
+  seed                 Int?
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  tournament         Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  members            TeamMember[]
+  matchEntrants      MatchEntrant[]
+  wonTeamMatches     Match[] @relation("MatchWinnerTeam")
+
+  @@unique([tournamentId, tournamentCategoryId, name])
+  @@index([tournamentId])
+  @@index([tournamentId, status])
+  @@index([tournamentCategoryId])
+  @@index([status])
+  @@map("teams")
+}
+
+model TeamMember {
+  id            String         @id @default(uuid()) @db.Uuid
+  teamId        String         @map("team_id") @db.Uuid
+  participantId String?        @map("participant_id") @db.Uuid
+  userId        String?        @map("user_id") @db.Uuid
+  displayName   String         @map("display_name") @db.VarChar(160)
+  email         String?        @db.VarChar(320)
+  phone         String?        @db.VarChar(40)
+  role          TeamMemberRole @default(PLAYER)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([teamId, participantId])
+  @@index([teamId])
+  @@index([participantId])
+  @@index([userId])
+  @@index([role])
+  @@map("team_members")
+}
+
+model FixtureSet {
+  id                   String             @id @default(uuid()) @db.Uuid
+  tournamentId         String             @map("tournament_id") @db.Uuid
+  tournamentCategoryId String             @map("tournament_category_id") @db.Uuid
+  format               FixtureFormat
+  entrantType          FixtureEntrantType @map("entrant_type")
+  status               FixtureSetStatus   @default(GENERATED)
+  name                 String?            @db.VarChar(180)
+  generatedAt          DateTime?          @map("generated_at")
+  publishedAt          DateTime?          @map("published_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  tournament         Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  rounds             FixtureRound[]
+  matches            Match[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([tournamentId, tournamentCategoryId])
+  @@index([status])
+  @@map("fixture_sets")
+}
+
+model FixtureRound {
+  id           String            @id @default(uuid()) @db.Uuid
+  fixtureSetId String            @map("fixture_set_id") @db.Uuid
+  roundNumber  Int               @map("round_number")
+  name         String            @db.VarChar(120)
+  stage        FixtureRoundStage
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  fixtureSet FixtureSet @relation(fields: [fixtureSetId], references: [id], onDelete: Restrict)
+  matches    Match[]
+
+  @@unique([fixtureSetId, roundNumber])
+  @@index([fixtureSetId])
+  @@map("fixture_rounds")
+}
+
+model Match {
+  id                   String      @id @default(uuid()) @db.Uuid
+  fixtureSetId         String      @map("fixture_set_id") @db.Uuid
+  fixtureRoundId       String      @map("fixture_round_id") @db.Uuid
+  tournamentId         String      @map("tournament_id") @db.Uuid
+  tournamentCategoryId String      @map("tournament_category_id") @db.Uuid
+  matchNumber          Int         @map("match_number")
+  status               MatchStatus @default(UNSCHEDULED)
+  scheduledAt          DateTime?   @map("scheduled_at")
+  venueName            String?     @map("venue_name") @db.VarChar(180)
+  courtName            String?     @map("court_name") @db.VarChar(120)
+  notes                String?     @db.VarChar(500)
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+
+  fixtureSet         FixtureSet        @relation(fields: [fixtureSetId], references: [id], onDelete: Restrict)
+  fixtureRound       FixtureRound      @relation(fields: [fixtureRoundId], references: [id], onDelete: Restrict)
+  tournament         Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  tournamentCategory TournamentCategory @relation(fields: [tournamentCategoryId], references: [id], onDelete: Restrict)
+  entrants           MatchEntrant[]
+  scores             MatchScore[]
+
+  roundPosition       Int       @map("round_position")
+  completedAt         DateTime? @map("completed_at")
+  winnerParticipantId String?   @map("winner_participant_id") @db.Uuid
+  winnerTeamId        String?   @map("winner_team_id") @db.Uuid
+  resultNotes         String?   @map("result_notes") @db.VarChar(500)
+
+  winnerParticipant Participant? @relation("MatchWinnerParticipant", fields: [winnerParticipantId], references: [id], onDelete: SetNull)
+  winnerTeam        Team?        @relation("MatchWinnerTeam", fields: [winnerTeamId], references: [id], onDelete: SetNull)
+  notificationOutbox NotificationOutbox[]
+
+  @@unique([fixtureSetId, matchNumber])
+  @@unique([fixtureRoundId, roundPosition])
+  @@index([fixtureSetId])
+  @@index([fixtureRoundId])
+  @@index([tournamentId])
+  @@index([tournamentCategoryId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([completedAt])
+  @@index([winnerParticipantId])
+  @@index([winnerTeamId])
+  @@map("matches")
+}
+
+model MatchEntrant {
+  id            String   @id @default(uuid()) @db.Uuid
+  matchId       String   @map("match_id") @db.Uuid
+  participantId String?  @map("participant_id") @db.Uuid
+  teamId        String?  @map("team_id") @db.Uuid
+  slotNumber    Int      @map("slot_number")
+  isBye         Boolean  @default(false) @map("is_bye")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  match       Match        @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: Restrict)
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  score       MatchScore?
+
+  @@unique([matchId, slotNumber])
+  @@index([matchId])
+  @@index([participantId])
+  @@index([teamId])
+  @@map("match_entrants")
+}
+
+model MatchScore {
+  id             String   @id @default(uuid()) @db.Uuid
+  matchId        String   @map("match_id") @db.Uuid
+  matchEntrantId String   @unique @map("match_entrant_id") @db.Uuid
+  score          Int
+  isWinner       Boolean  @default(false) @map("is_winner")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  match        Match        @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  matchEntrant MatchEntrant @relation(fields: [matchEntrantId], references: [id], onDelete: Restrict)
+
+  @@index([matchId])
+  @@index([matchEntrantId])
+  @@index([isWinner])
+  @@map("match_scores")
+}
+
+model RefreshToken {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  tokenHash String             @unique @map("token_hash")
+  status    RefreshTokenStatus @default(ACTIVE)
+  expiresAt DateTime           @map("expires_at")
+  revokedAt DateTime?          @map("revoked_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  entityType String   @map("entity_type") @db.VarChar(80)
+  entityId   String?  @map("entity_id") @db.Uuid
+  action     String   @db.VarChar(120)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model NotificationOutbox {
+  id                   String              @id @default(uuid()) @db.Uuid
+  type                 NotificationType
+  channel              NotificationChannel @default(EMAIL)
+  status               NotificationStatus  @default(PENDING)
+  recipientUserId      String?             @map("recipient_user_id") @db.Uuid
+  recipientEmail       String?             @map("recipient_email") @db.VarChar(320)
+  recipientName        String?             @map("recipient_name") @db.VarChar(160)
+  tournamentId         String?             @map("tournament_id") @db.Uuid
+  tournamentCategoryId String?             @map("tournament_category_id") @db.Uuid
+  registrationId       String?             @map("registration_id") @db.Uuid
+  fixtureSetId         String?             @map("fixture_set_id") @db.Uuid
+  matchId              String?             @map("match_id") @db.Uuid
+  subject              String?             @db.VarChar(220)
+  payload              Json
+  provider             String?             @db.VarChar(80)
+  providerMessageId    String?             @map("provider_message_id") @db.VarChar(220)
+  attempts             Int                 @default(0)
+  maxAttempts          Int                 @default(3) @map("max_attempts")
+  lastError            String?             @map("last_error") @db.VarChar(1000)
+  scheduledAt          DateTime?           @map("scheduled_at")
+  processedAt          DateTime?           @map("processed_at")
+  idempotencyKey       String?             @unique @map("idempotency_key") @db.VarChar(220)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  recipientUser      User?               @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  tournament         Tournament?         @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  tournamentCategory TournamentCategory? @relation(fields: [tournamentCategoryId], references: [id], onDelete: SetNull)
+  registration       Registration?       @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  fixtureSet         FixtureSet?         @relation(fields: [fixtureSetId], references: [id], onDelete: SetNull)
+  match              Match?              @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledAt])
+  @@index([type])
+  @@index([recipientUserId])
+  @@index([tournamentId])
+  @@index([registrationId])
+  @@index([fixtureSetId])
+  @@index([matchId])
+  @@map("notification_outbox")
+}

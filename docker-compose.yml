@@ -1,0 +1,196 @@
+x-backend-service: &backend-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: backend
+  environment:
+    SERVICE_NAME: ${SERVICE_NAME:-matchflow-arena-api}
+    PORT: ${BACKEND_CONTAINER_PORT:-3010}
+    NODE_ENV: ${NODE_ENV:-development}
+    APP_VERSION: ${APP_VERSION:-0.1.0}
+    CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3002}
+    DATABASE_URL: postgresql://${POSTGRES_USER:-matchflow}:${POSTGRES_PASSWORD:-matchflow_dev_password}@postgres:5432/${POSTGRES_DB:-matchflow_arena}
+    POSTGRES_DB: ${POSTGRES_DB:-matchflow_arena}
+    POSTGRES_USER: ${POSTGRES_USER:-matchflow}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-matchflow_dev_password}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
+    JWT_ACCESS_TOKEN_SECRET: ${JWT_ACCESS_TOKEN_SECRET:-replace_with_local_dev_secret}
+    JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
+    JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET:-replace_with_local_refresh_secret}
+    JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-7d}
+    FE_APP_URL: ${FE_APP_URL:-http://localhost:3002}
+    NOTIFICATION_PROVIDER: ${NOTIFICATION_PROVIDER:-noop}
+    NOTIFICATION_FROM_EMAIL: ${NOTIFICATION_FROM_EMAIL:-notifications@matchflow.local}
+    NOTIFICATION_FROM_NAME: ${NOTIFICATION_FROM_NAME:-MatchFlow Arena}
+    NOTIFICATION_PROCESS_LIMIT: ${NOTIFICATION_PROCESS_LIMIT:-20}
+    SMTP_HOST: ${SMTP_HOST:-}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_SECURE: ${SMTP_SECURE:-false}
+    SMTP_USER: ${SMTP_USER:-}
+    SMTP_PASS: ${SMTP_PASS:-}
+    SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-false}
+    SMTP_REJECT_UNAUTHORIZED: ${SMTP_REJECT_UNAUTHORIZED:-true}
+    SMTP_ALLOW_UNAUTH: ${SMTP_ALLOW_UNAUTH:-false}
+    PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+    PAYMENT_DEFAULT_CURRENCY: ${PAYMENT_DEFAULT_CURRENCY:-INR}
+    PAYMENT_MOCK_CHECKOUT_BASE_URL: ${PAYMENT_MOCK_CHECKOUT_BASE_URL:-http://localhost:3002}
+    PAYMENT_INTENT_EXPIRY_MINUTES: ${PAYMENT_INTENT_EXPIRY_MINUTES:-30}
+    PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+    PAYMENT_RECONCILIATION_PROVIDER: ${PAYMENT_RECONCILIATION_PROVIDER:-}
+    PAYMENT_RECONCILIATION_LIMIT: ${PAYMENT_RECONCILIATION_LIMIT:-25}
+    RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+    RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+    RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    RAZORPAY_CHECKOUT_NAME: ${RAZORPAY_CHECKOUT_NAME:-MatchFlow Arena}
+    RAZORPAY_CHECKOUT_DESCRIPTION: ${RAZORPAY_CHECKOUT_DESCRIPTION:-Tournament registration fee}
+    EXPORT_MAX_ROWS: ${EXPORT_MAX_ROWS:-5000}
+  networks:
+    - matchflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-matchflow_arena}
+      POSTGRES_USER: ${POSTGRES_USER:-matchflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-matchflow_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-matchflow} -d ${POSTGRES_DB:-matchflow_arena}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matchflow
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-56379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matchflow
+
+  backend:
+    <<: *backend-service
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3010}:${BACKEND_CONTAINER_PORT:-3010}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${BACKEND_CONTAINER_PORT:-3010}/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - matchflow
+
+  backend-migrate:
+    <<: *backend-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: pnpm --filter @matchflow/backend prisma:deploy
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  backend-seed:
+    <<: *backend-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: pnpm --filter @matchflow/backend db:seed
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  smoke:
+    <<: *backend-service
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_URL: ${API_URL:-http://backend:3010}
+    command: pnpm smoke:mvp
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  notifications-process:
+    <<: *backend-service
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NOTIFICATION_PROCESS_REQUIRE_WORK: ${NOTIFICATION_PROCESS_REQUIRE_WORK:-}
+    command: pnpm --filter @matchflow/backend notifications:process
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  payments-reconcile:
+    <<: *backend-service
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: pnpm --filter @matchflow/backend payments:reconcile
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:3010}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-MatchFlow Arena}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${FRONTEND_NODE_ENV:-production}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-MatchFlow Arena}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:3010}
+    ports:
+      - "${FRONTEND_PORT:-3002}:3002"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - matchflow
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  matchflow:
+    driver: bridge
