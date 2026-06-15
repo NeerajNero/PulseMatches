@@ -30,7 +30,7 @@ export function getAdminStatusTone(status?: string | null) {
   if (status === "paid" || status === "published" || status === "sent" || status === "completed" || status === "succeeded") {
     return "status-pill-ready";
   }
-  if (status === "failed" || status === "rejected" || status === "cancelled" || status === "blocked") {
+  if (status === "failed" || status === "rejected" || status === "cancelled" || status === "blocked" || status === "critical") {
     return "status-pill-closed";
   }
   return "status-pill-planned";

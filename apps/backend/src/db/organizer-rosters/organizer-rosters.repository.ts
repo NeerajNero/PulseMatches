@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import {
   PaymentProvider,
   PaymentRefundStatus,
+  MatchStatus,
+  NotificationStatus,
   ParticipantSource,
   Prisma,
   RegistrationPaymentMode,
@@ -156,6 +158,97 @@ export class OrganizerRostersRepository {
 
   countRegistrations(where: Prisma.RegistrationWhereInput) {
     return this.prisma.registration.count({ where });
+  }
+
+  async getTournamentReportSummary(input: { tournamentId: string; createdAt?: Prisma.DateTimeFilter }) {
+    const registrationWhere: Prisma.RegistrationWhereInput = {
+      tournamentId: input.tournamentId,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const paymentWhere: Prisma.PaymentRecordWhereInput = {
+      tournamentId: input.tournamentId,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const refundWhere: Prisma.PaymentRefundWhereInput = {
+      tournamentId: input.tournamentId,
+      status: { in: [PaymentRefundStatus.MANUAL_RECORDED, PaymentRefundStatus.SUCCEEDED] },
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const participantWhere: Prisma.ParticipantWhereInput = {
+      tournamentId: input.tournamentId,
+      status: RosterParticipantStatus.ACTIVE,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const teamWhere: Prisma.TeamWhereInput = {
+      tournamentId: input.tournamentId,
+      status: TeamStatus.ACTIVE,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const fixtureWhere: Prisma.FixtureSetWhereInput = {
+      tournamentId: input.tournamentId,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const completedMatchWhere: Prisma.MatchWhereInput = {
+      tournamentId: input.tournamentId,
+      status: MatchStatus.COMPLETED,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+    const notificationWhere: Prisma.NotificationOutboxWhereInput = {
+      tournamentId: input.tournamentId,
+      status: NotificationStatus.PENDING,
+      ...(input.createdAt ? { createdAt: input.createdAt } : {})
+    };
+
+    const [
+      registrationsByStatus,
+      paymentsByStatus,
+      collected,
+      refunded,
+      participantCount,
+      teamCount,
+      fixtureCount,
+      completedMatchCount,
+      pendingNotificationCount
+    ] = await Promise.all([
+      this.prisma.registration.groupBy({
+        by: ["status"],
+        where: registrationWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.paymentRecord.groupBy({
+        by: ["status"],
+        where: paymentWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.paymentRecord.aggregate({
+        where: {
+          ...paymentWhere,
+          status: RegistrationPaymentStatus.PAID
+        },
+        _sum: { amount: true }
+      }),
+      this.prisma.paymentRefund.aggregate({
+        where: refundWhere,
+        _sum: { amount: true }
+      }),
+      this.prisma.participant.count({ where: participantWhere }),
+      this.prisma.team.count({ where: teamWhere }),
+      this.prisma.fixtureSet.count({ where: fixtureWhere }),
+      this.prisma.match.count({ where: completedMatchWhere }),
+      this.prisma.notificationOutbox.count({ where: notificationWhere })
+    ]);
+
+    return {
+      registrationsByStatus,
+      paymentsByStatus,
+      totalCollectedAmount: collected._sum.amount ?? 0,
+      totalRefundedAmount: refunded._sum.amount ?? 0,
+      participantCount,
+      teamCount,
+      fixtureCount,
+      completedMatchCount,
+      pendingNotificationCount
+    };
   }
 
   findRegistrations(where: Prisma.RegistrationWhereInput, take?: number) {

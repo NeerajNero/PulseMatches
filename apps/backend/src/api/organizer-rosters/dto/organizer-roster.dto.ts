@@ -48,11 +48,37 @@ export class OrganizerRosterListQueryDto {
   search?: string;
 }
 
+export class OrganizerReportDateRangeQueryDto {
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
+}
+
 export class OrganizerRegistrationListQueryDto extends OrganizerRosterListQueryDto {
   @ApiPropertyOptional({ enum: REGISTRATION_STATUS_VALUES })
   @IsOptional()
   @IsIn(REGISTRATION_STATUS_VALUES)
   status?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
 }
 
 export class OrganizerPaymentListQueryDto extends OrganizerRosterListQueryDto {
@@ -60,6 +86,18 @@ export class OrganizerPaymentListQueryDto extends OrganizerRosterListQueryDto {
   @IsOptional()
   @IsIn(PAYMENT_STATUS_VALUES)
   status?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
 }
 
 export class OrganizerParticipantListQueryDto extends OrganizerRosterListQueryDto {
@@ -694,6 +732,43 @@ export class OrganizerRosterSummaryDto {
   teams_active!: number;
 }
 
+export class OrganizerReportCountDto {
+  @ApiProperty()
+  status!: string;
+
+  @ApiProperty()
+  count!: number;
+}
+
+export class OrganizerTournamentReportSummaryDto {
+  @ApiProperty({ type: [OrganizerReportCountDto] })
+  registrations_by_status!: OrganizerReportCountDto[];
+
+  @ApiProperty({ type: [OrganizerReportCountDto] })
+  payments_by_status!: OrganizerReportCountDto[];
+
+  @ApiProperty()
+  total_collected_amount!: number;
+
+  @ApiProperty()
+  total_refunded_amount!: number;
+
+  @ApiProperty()
+  participant_count!: number;
+
+  @ApiProperty()
+  team_count!: number;
+
+  @ApiProperty()
+  fixture_count!: number;
+
+  @ApiProperty()
+  completed_match_count!: number;
+
+  @ApiProperty()
+  pending_notification_count!: number;
+}
+
 export class OrganizerRegistrationListApiResponseDto extends ApiResponseDto<OrganizerRegistrationDto[]> {
   @ApiProperty({ type: [OrganizerRegistrationDto] })
   declare data: OrganizerRegistrationDto[];
@@ -747,6 +822,11 @@ export class OrganizerTeamMemberApiResponseDto extends ApiResponseDto<OrganizerT
 export class OrganizerRosterSummaryApiResponseDto extends ApiResponseDto<OrganizerRosterSummaryDto> {
   @ApiProperty({ type: OrganizerRosterSummaryDto })
   declare data: OrganizerRosterSummaryDto;
+}
+
+export class OrganizerTournamentReportSummaryApiResponseDto extends ApiResponseDto<OrganizerTournamentReportSummaryDto> {
+  @ApiProperty({ type: OrganizerTournamentReportSummaryDto })
+  declare data: OrganizerTournamentReportSummaryDto;
 }
 
 export const ORGANIZER_ROSTER_ENUMS = {

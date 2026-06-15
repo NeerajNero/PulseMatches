@@ -89,6 +89,11 @@ import {
     OrganizerTeamMemberApiResponseDtoToJSON,
 } from '../models/OrganizerTeamMemberApiResponseDto';
 import {
+    type OrganizerTournamentReportSummaryApiResponseDto,
+    OrganizerTournamentReportSummaryApiResponseDtoFromJSON,
+    OrganizerTournamentReportSummaryApiResponseDtoToJSON,
+} from '../models/OrganizerTournamentReportSummaryApiResponseDto';
+import {
     type RejectRegistrationRequestDto,
     RejectRegistrationRequestDtoFromJSON,
     RejectRegistrationRequestDtoToJSON,
@@ -169,11 +174,31 @@ export interface OrganizerRostersControllerExportParticipantsRequest {
     status?: OrganizerRostersControllerExportParticipantsStatusEnum;
 }
 
+export interface OrganizerRostersControllerExportPaymentReportRequest {
+    id: string;
+    categoryId?: string;
+    search?: string;
+    status?: OrganizerRostersControllerExportPaymentReportStatusEnum;
+    from?: string;
+    to?: string;
+}
+
 export interface OrganizerRostersControllerExportPaymentsRequest {
     id: string;
     categoryId?: string;
     search?: string;
     status?: OrganizerRostersControllerExportPaymentsStatusEnum;
+    from?: string;
+    to?: string;
+}
+
+export interface OrganizerRostersControllerExportRegistrationReportRequest {
+    id: string;
+    categoryId?: string;
+    search?: string;
+    status?: OrganizerRostersControllerExportRegistrationReportStatusEnum;
+    from?: string;
+    to?: string;
 }
 
 export interface OrganizerRostersControllerExportRegistrationsRequest {
@@ -181,6 +206,8 @@ export interface OrganizerRostersControllerExportRegistrationsRequest {
     categoryId?: string;
     search?: string;
     status?: OrganizerRostersControllerExportRegistrationsStatusEnum;
+    from?: string;
+    to?: string;
 }
 
 export interface OrganizerRostersControllerExportTeamsRequest {
@@ -207,6 +234,8 @@ export interface OrganizerRostersControllerFindPaymentsRequest {
     categoryId?: string;
     search?: string;
     status?: OrganizerRostersControllerFindPaymentsStatusEnum;
+    from?: string;
+    to?: string;
 }
 
 export interface OrganizerRostersControllerFindRegistrationsRequest {
@@ -214,6 +243,8 @@ export interface OrganizerRostersControllerFindRegistrationsRequest {
     categoryId?: string;
     search?: string;
     status?: OrganizerRostersControllerFindRegistrationsStatusEnum;
+    from?: string;
+    to?: string;
 }
 
 export interface OrganizerRostersControllerFindTeamRequest {
@@ -226,6 +257,12 @@ export interface OrganizerRostersControllerFindTeamsRequest {
     categoryId?: string;
     search?: string;
     status?: OrganizerRostersControllerFindTeamsStatusEnum;
+}
+
+export interface OrganizerRostersControllerGetReportSummaryRequest {
+    id: string;
+    from?: string;
+    to?: string;
 }
 
 export interface OrganizerRostersControllerGetSummaryRequest {
@@ -914,6 +951,78 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for organizerRostersControllerExportPaymentReport without sending the request
+     */
+    async organizerRostersControllerExportPaymentReportRequestOpts(requestParameters: OrganizerRostersControllerExportPaymentReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling organizerRostersControllerExportPaymentReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['categoryId'] != null) {
+            queryParameters['category_id'] = requestParameters['categoryId'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/organizer/tournaments/{id}/reports/payments/export.csv`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Export organizer payment report as CSV
+     */
+    async organizerRostersControllerExportPaymentReportRaw(requestParameters: OrganizerRostersControllerExportPaymentReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.organizerRostersControllerExportPaymentReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Export organizer payment report as CSV
+     */
+    async organizerRostersControllerExportPaymentReport(requestParameters: OrganizerRostersControllerExportPaymentReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.organizerRostersControllerExportPaymentReportRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for organizerRostersControllerExportPayments without sending the request
      */
     async organizerRostersControllerExportPaymentsRequestOpts(requestParameters: OrganizerRostersControllerExportPaymentsRequest): Promise<runtime.RequestOpts> {
@@ -936,6 +1045,14 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -978,6 +1095,78 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for organizerRostersControllerExportRegistrationReport without sending the request
+     */
+    async organizerRostersControllerExportRegistrationReportRequestOpts(requestParameters: OrganizerRostersControllerExportRegistrationReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling organizerRostersControllerExportRegistrationReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['categoryId'] != null) {
+            queryParameters['category_id'] = requestParameters['categoryId'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/organizer/tournaments/{id}/reports/registrations/export.csv`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Export organizer registration report as CSV
+     */
+    async organizerRostersControllerExportRegistrationReportRaw(requestParameters: OrganizerRostersControllerExportRegistrationReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.organizerRostersControllerExportRegistrationReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Export organizer registration report as CSV
+     */
+    async organizerRostersControllerExportRegistrationReport(requestParameters: OrganizerRostersControllerExportRegistrationReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.organizerRostersControllerExportRegistrationReportRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for organizerRostersControllerExportRegistrations without sending the request
      */
     async organizerRostersControllerExportRegistrationsRequestOpts(requestParameters: OrganizerRostersControllerExportRegistrationsRequest): Promise<runtime.RequestOpts> {
@@ -1000,6 +1189,14 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -1256,6 +1453,14 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
             queryParameters['status'] = requestParameters['status'];
         }
 
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         if (this.configuration && this.configuration.accessToken) {
@@ -1319,6 +1524,14 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -1484,6 +1697,67 @@ export class OrganizerRostersApi extends runtime.BaseAPI {
      */
     async organizerRostersControllerFindTeams(requestParameters: OrganizerRostersControllerFindTeamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OrganizerTeamListApiResponseDto> {
         const response = await this.organizerRostersControllerFindTeamsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for organizerRostersControllerGetReportSummary without sending the request
+     */
+    async organizerRostersControllerGetReportSummaryRequestOpts(requestParameters: OrganizerRostersControllerGetReportSummaryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling organizerRostersControllerGetReportSummary().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/organizer/tournaments/{id}/reports/summary`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get organizer-owned tournament reporting summary
+     */
+    async organizerRostersControllerGetReportSummaryRaw(requestParameters: OrganizerRostersControllerGetReportSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OrganizerTournamentReportSummaryApiResponseDto>> {
+        const requestOptions = await this.organizerRostersControllerGetReportSummaryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OrganizerTournamentReportSummaryApiResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Get organizer-owned tournament reporting summary
+     */
+    async organizerRostersControllerGetReportSummary(requestParameters: OrganizerRostersControllerGetReportSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OrganizerTournamentReportSummaryApiResponseDto> {
+        const response = await this.organizerRostersControllerGetReportSummaryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1917,6 +2191,18 @@ export type OrganizerRostersControllerExportParticipantsStatusEnum = typeof Orga
 /**
  * @export
  */
+export const OrganizerRostersControllerExportPaymentReportStatusEnum = {
+    NotRequired: 'not_required',
+    PendingOffline: 'pending_offline',
+    Paid: 'paid',
+    Failed: 'failed',
+    Refunded: 'refunded',
+    Waived: 'waived'
+} as const;
+export type OrganizerRostersControllerExportPaymentReportStatusEnum = typeof OrganizerRostersControllerExportPaymentReportStatusEnum[keyof typeof OrganizerRostersControllerExportPaymentReportStatusEnum];
+/**
+ * @export
+ */
 export const OrganizerRostersControllerExportPaymentsStatusEnum = {
     NotRequired: 'not_required',
     PendingOffline: 'pending_offline',
@@ -1926,6 +2212,16 @@ export const OrganizerRostersControllerExportPaymentsStatusEnum = {
     Waived: 'waived'
 } as const;
 export type OrganizerRostersControllerExportPaymentsStatusEnum = typeof OrganizerRostersControllerExportPaymentsStatusEnum[keyof typeof OrganizerRostersControllerExportPaymentsStatusEnum];
+/**
+ * @export
+ */
+export const OrganizerRostersControllerExportRegistrationReportStatusEnum = {
+    Pending: 'pending',
+    Confirmed: 'confirmed',
+    Rejected: 'rejected',
+    Cancelled: 'cancelled'
+} as const;
+export type OrganizerRostersControllerExportRegistrationReportStatusEnum = typeof OrganizerRostersControllerExportRegistrationReportStatusEnum[keyof typeof OrganizerRostersControllerExportRegistrationReportStatusEnum];
 /**
  * @export
  */

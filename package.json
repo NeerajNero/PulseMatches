@@ -18,6 +18,7 @@
     "docker:migrate": "docker-compose run --rm backend-migrate",
     "docker:seed": "docker-compose run --rm backend-seed",
     "docker:smoke": "docker-compose run --rm smoke",
+    "docker:smoke:full": "bash scripts/docker-smoke-full.sh",
     "docker:notifications:process": "docker-compose run --rm notifications-process",
     "docker:payments:reconcile": "docker-compose run --rm payments-reconcile",
     "docker:backend:shell": "docker-compose exec backend sh",
@@ -29,10 +30,12 @@
     "lint": "pnpm -r --if-present lint",
     "generate:openapi": "node scripts/export-openapi.mjs",
     "generate:sdk": "openapi-generator-cli generate -i openapi.json -g typescript-fetch -o libs/client_sdk",
+    "config:check": "pnpm --filter @matchflow/backend config:check",
     "smoke:mvp": "node scripts/mvp-smoke.mjs",
     "notifications:process": "pnpm --filter @matchflow/backend notifications:process",
     "notifications:test-email": "pnpm --filter @matchflow/backend notifications:test-email",
     "payments:reconcile": "pnpm --filter @matchflow/backend payments:reconcile",
+    "audit:deps": "pnpm audit",
     "verify:mvp": "pnpm --filter @matchflow/backend prisma:generate && pnpm --filter @matchflow/backend typecheck && pnpm --filter @matchflow/backend lint && pnpm --filter @matchflow/backend build && pnpm --filter @matchflow/frontend typecheck && pnpm --filter @matchflow/frontend lint && pnpm --filter @matchflow/frontend build && pnpm typecheck && pnpm lint && pnpm build"
   },
   "devDependencies": {

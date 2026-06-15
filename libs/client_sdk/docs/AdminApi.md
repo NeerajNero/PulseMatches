@@ -7,13 +7,18 @@ All URIs are relative to *http://localhost*
 | [**adminControllerExportAuditEvents**](AdminApi.md#admincontrollerexportauditevents) | **GET** /admin/audit-events/export.csv | Export sanitized audit event summary as CSV |
 | [**adminControllerExportNotifications**](AdminApi.md#admincontrollerexportnotifications) | **GET** /admin/notifications/export.csv | Export safe notification outbox summary as CSV |
 | [**adminControllerExportOrganizers**](AdminApi.md#admincontrollerexportorganizers) | **GET** /admin/organizers/export.csv | Export safe organizer verification list as CSV |
+| [**adminControllerExportPaymentReport**](AdminApi.md#admincontrollerexportpaymentreport) | **GET** /admin/reports/payments/export.csv | Export platform payment report as CSV |
 | [**adminControllerExportPayments**](AdminApi.md#admincontrollerexportpayments) | **GET** /admin/payments/export.csv | Export safe payment overview as CSV |
+| [**adminControllerExportReconciliationRuns**](AdminApi.md#admincontrollerexportreconciliationruns) | **GET** /admin/reconciliation-runs/export.csv | Export reconciliation run summaries as CSV |
+| [**adminControllerExportRegistrationReport**](AdminApi.md#admincontrollerexportregistrationreport) | **GET** /admin/reports/registrations/export.csv | Export platform registration report as CSV |
 | [**adminControllerExportRegistrations**](AdminApi.md#admincontrollerexportregistrations) | **GET** /admin/registrations/export.csv | Export safe registration overview as CSV |
 | [**adminControllerExportTournaments**](AdminApi.md#admincontrollerexporttournaments) | **GET** /admin/tournaments/export.csv | Export safe tournament overview as CSV |
 | [**adminControllerExportUsers**](AdminApi.md#admincontrollerexportusers) | **GET** /admin/users/export.csv | Export safe platform users list as CSV |
 | [**adminControllerFindOrganizerDetail**](AdminApi.md#admincontrollerfindorganizerdetail) | **GET** /admin/organizers/{organizerId} | Get read-only organizer verification detail for support review |
 | [**adminControllerFindPaymentDetail**](AdminApi.md#admincontrollerfindpaymentdetail) | **GET** /admin/payments/{paymentRecordId} | Get read-only support diagnostics for one payment record |
 | [**adminControllerGetDashboard**](AdminApi.md#admincontrollergetdashboard) | **GET** /admin/dashboard | Get read-only platform support dashboard summary |
+| [**adminControllerGetOperationsStatus**](AdminApi.md#admincontrollergetoperationsstatus) | **GET** /admin/operations/status | Get alert-ready platform operations status |
+| [**adminControllerGetReportSummary**](AdminApi.md#admincontrollergetreportsummary) | **GET** /admin/reports/summary | Get platform-level support reporting summary |
 | [**adminControllerListAuditEvents**](AdminApi.md#admincontrollerlistauditevents) | **GET** /admin/audit-events | List sanitized audit events for support inspection |
 | [**adminControllerListNotifications**](AdminApi.md#admincontrollerlistnotifications) | **GET** /admin/notifications | List notification outbox rows for support inspection |
 | [**adminControllerListOrganizers**](AdminApi.md#admincontrollerlistorganizers) | **GET** /admin/organizers | List organizer profiles for support inspection |
@@ -273,9 +278,102 @@ example().catch(console.error);
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminControllerExportPaymentReport
+
+> adminControllerExportPaymentReport(page, limit, search, provider, status, tournamentId, registrationId, from, to)
+
+Export platform payment report as CSV
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AdminApi,
+} from '';
+import type { AdminControllerExportPaymentReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new AdminApi(config);
+
+  const body = {
+    // number (optional)
+    page: 8.14,
+    // number (optional)
+    limit: 8.14,
+    // string (optional)
+    search: search text,
+    // 'manual' | 'mock' | 'razorpay' | 'future_provider' (optional)
+    provider: provider_example,
+    // 'not_required' | 'pending_offline' | 'paid' | 'failed' | 'refunded' | 'waived' (optional)
+    status: status_example,
+    // string (optional)
+    tournamentId: tournamentId_example,
+    // string (optional)
+    registrationId: registrationId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies AdminControllerExportPaymentReportRequest;
+
+  try {
+    const data = await api.adminControllerExportPaymentReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **page** | `number` |  | [Optional] [Defaults to `1`] |
+| **limit** | `number` |  | [Optional] [Defaults to `20`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **provider** | `manual`, `mock`, `razorpay`, `future_provider` |  | [Optional] [Defaults to `undefined`] [Enum: manual, mock, razorpay, future_provider] |
+| **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
+| **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **registrationId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminControllerExportPayments
 
-> adminControllerExportPayments(page, limit, search, provider, status, tournamentId, registrationId)
+> adminControllerExportPayments(page, limit, search, provider, status, tournamentId, registrationId, from, to)
 
 Export safe payment overview as CSV
 
@@ -311,6 +409,10 @@ async function example() {
     tournamentId: tournamentId_example,
     // string (optional)
     registrationId: registrationId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies AdminControllerExportPaymentsRequest;
 
   try {
@@ -337,6 +439,185 @@ example().catch(console.error);
 | **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
 | **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **registrationId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminControllerExportReconciliationRuns
+
+> adminControllerExportReconciliationRuns(page, limit, search, provider, status, from, to)
+
+Export reconciliation run summaries as CSV
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AdminApi,
+} from '';
+import type { AdminControllerExportReconciliationRunsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new AdminApi(config);
+
+  const body = {
+    // number (optional)
+    page: 8.14,
+    // number (optional)
+    limit: 8.14,
+    // string (optional)
+    search: search text,
+    // 'manual' | 'mock' | 'razorpay' | 'future_provider' (optional)
+    provider: provider_example,
+    // 'started' | 'completed' | 'failed' (optional)
+    status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies AdminControllerExportReconciliationRunsRequest;
+
+  try {
+    const data = await api.adminControllerExportReconciliationRuns(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **page** | `number` |  | [Optional] [Defaults to `1`] |
+| **limit** | `number` |  | [Optional] [Defaults to `20`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **provider** | `manual`, `mock`, `razorpay`, `future_provider` |  | [Optional] [Defaults to `undefined`] [Enum: manual, mock, razorpay, future_provider] |
+| **status** | `started`, `completed`, `failed` |  | [Optional] [Defaults to `undefined`] [Enum: started, completed, failed] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminControllerExportRegistrationReport
+
+> adminControllerExportRegistrationReport(page, limit, search, status, paymentStatus, tournamentId, from, to)
+
+Export platform registration report as CSV
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AdminApi,
+} from '';
+import type { AdminControllerExportRegistrationReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new AdminApi(config);
+
+  const body = {
+    // number (optional)
+    page: 8.14,
+    // number (optional)
+    limit: 8.14,
+    // string (optional)
+    search: search text,
+    // 'pending' | 'confirmed' | 'rejected' | 'cancelled' (optional)
+    status: status_example,
+    // 'not_required' | 'pending_offline' | 'paid' | 'failed' | 'refunded' | 'waived' (optional)
+    paymentStatus: paymentStatus_example,
+    // string (optional)
+    tournamentId: tournamentId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies AdminControllerExportRegistrationReportRequest;
+
+  try {
+    const data = await api.adminControllerExportRegistrationReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **page** | `number` |  | [Optional] [Defaults to `1`] |
+| **limit** | `number` |  | [Optional] [Defaults to `20`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
+| **paymentStatus** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
+| **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -362,7 +643,7 @@ example().catch(console.error);
 
 ## adminControllerExportRegistrations
 
-> adminControllerExportRegistrations(page, limit, search, status, paymentStatus, tournamentId)
+> adminControllerExportRegistrations(page, limit, search, status, paymentStatus, tournamentId, from, to)
 
 Export safe registration overview as CSV
 
@@ -396,6 +677,10 @@ async function example() {
     paymentStatus: paymentStatus_example,
     // string (optional)
     tournamentId: tournamentId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies AdminControllerExportRegistrationsRequest;
 
   try {
@@ -421,6 +706,8 @@ example().catch(console.error);
 | **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
 | **paymentStatus** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
 | **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -802,6 +1089,139 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminControllerGetOperationsStatus
+
+> AdminOperationsStatusApiResponseDto adminControllerGetOperationsStatus()
+
+Get alert-ready platform operations status
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AdminApi,
+} from '';
+import type { AdminControllerGetOperationsStatusRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new AdminApi(config);
+
+  try {
+    const data = await api.adminControllerGetOperationsStatus();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AdminOperationsStatusApiResponseDto**](AdminOperationsStatusApiResponseDto.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminControllerGetReportSummary
+
+> AdminPlatformReportSummaryApiResponseDto adminControllerGetReportSummary(from, to)
+
+Get platform-level support reporting summary
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AdminApi,
+} from '';
+import type { AdminControllerGetReportSummaryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new AdminApi(config);
+
+  const body = {
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies AdminControllerGetReportSummaryRequest;
+
+  try {
+    const data = await api.adminControllerGetReportSummary(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**AdminPlatformReportSummaryApiResponseDto**](AdminPlatformReportSummaryApiResponseDto.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminControllerListAuditEvents
 
 > AdminAuditEventsApiResponseDto adminControllerListAuditEvents(page, limit, search, entityType, action)
@@ -1047,7 +1467,7 @@ example().catch(console.error);
 
 ## adminControllerListPayments
 
-> AdminPaymentsApiResponseDto adminControllerListPayments(page, limit, search, provider, status, tournamentId, registrationId)
+> AdminPaymentsApiResponseDto adminControllerListPayments(page, limit, search, provider, status, tournamentId, registrationId, from, to)
 
 List payment records for support inspection
 
@@ -1083,6 +1503,10 @@ async function example() {
     tournamentId: tournamentId_example,
     // string (optional)
     registrationId: registrationId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies AdminControllerListPaymentsRequest;
 
   try {
@@ -1109,6 +1533,8 @@ example().catch(console.error);
 | **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
 | **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **registrationId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1134,7 +1560,7 @@ example().catch(console.error);
 
 ## adminControllerListReconciliationRuns
 
-> AdminReconciliationRunsApiResponseDto adminControllerListReconciliationRuns(page, limit, search, provider, status)
+> AdminReconciliationRunsApiResponseDto adminControllerListReconciliationRuns(page, limit, search, provider, status, from, to)
 
 List payment reconciliation runs for support inspection
 
@@ -1166,6 +1592,10 @@ async function example() {
     provider: provider_example,
     // 'started' | 'completed' | 'failed' (optional)
     status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies AdminControllerListReconciliationRunsRequest;
 
   try {
@@ -1190,6 +1620,8 @@ example().catch(console.error);
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **provider** | `manual`, `mock`, `razorpay`, `future_provider` |  | [Optional] [Defaults to `undefined`] [Enum: manual, mock, razorpay, future_provider] |
 | **status** | `started`, `completed`, `failed` |  | [Optional] [Defaults to `undefined`] [Enum: started, completed, failed] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1215,7 +1647,7 @@ example().catch(console.error);
 
 ## adminControllerListRegistrations
 
-> AdminRegistrationsApiResponseDto adminControllerListRegistrations(page, limit, search, status, paymentStatus, tournamentId)
+> AdminRegistrationsApiResponseDto adminControllerListRegistrations(page, limit, search, status, paymentStatus, tournamentId, from, to)
 
 List registrations for support inspection
 
@@ -1249,6 +1681,10 @@ async function example() {
     paymentStatus: paymentStatus_example,
     // string (optional)
     tournamentId: tournamentId_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies AdminControllerListRegistrationsRequest;
 
   try {
@@ -1274,6 +1710,8 @@ example().catch(console.error);
 | **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
 | **paymentStatus** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
 | **tournamentId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

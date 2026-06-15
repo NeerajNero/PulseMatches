@@ -22,6 +22,10 @@ export class OrganizerRostersDbService {
     return this.repository.countRegistrations(where);
   }
 
+  getTournamentReportSummary(input: { tournamentId: string; createdAt?: Prisma.DateTimeFilter }) {
+    return this.repository.getTournamentReportSummary(input);
+  }
+
   findRegistrations(where: Prisma.RegistrationWhereInput, take?: number) {
     return this.repository.findRegistrations(where, take);
   }

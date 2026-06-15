@@ -13,6 +13,7 @@
     "prisma:deploy": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} prisma migrate deploy",
     "prisma:studio": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} prisma studio",
     "db:seed": "DATABASE_URL=${DATABASE_URL:-postgresql://matchflow:matchflow_dev_password@localhost:55432/matchflow_arena} ts-node prisma/seed.ts",
+    "config:check": "ts-node -r tsconfig-paths/register src/scripts/check-config.ts",
     "notifications:process": "ts-node -r tsconfig-paths/register src/scripts/process-notifications.ts",
     "notifications:test-email": "ts-node -r tsconfig-paths/register src/scripts/send-test-notification-email.ts",
     "payments:reconcile": "ts-node -r tsconfig-paths/register src/scripts/reconcile-payments.ts"

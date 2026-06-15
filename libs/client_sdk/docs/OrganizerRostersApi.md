@@ -14,7 +14,9 @@ All URIs are relative to *http://localhost*
 | [**organizerRostersControllerDeleteTeam**](OrganizerRostersApi.md#organizerrosterscontrollerdeleteteam) | **DELETE** /organizer/tournaments/{id}/teams/{teamId} | Withdraw one team |
 | [**organizerRostersControllerDeleteTeamMember**](OrganizerRostersApi.md#organizerrosterscontrollerdeleteteammember) | **DELETE** /organizer/tournaments/{id}/teams/{teamId}/members/{memberId} | Remove one member from a team |
 | [**organizerRostersControllerExportParticipants**](OrganizerRostersApi.md#organizerrosterscontrollerexportparticipants) | **GET** /organizer/tournaments/{id}/participants/export.csv | Export participants for one owned organizer tournament as CSV |
+| [**organizerRostersControllerExportPaymentReport**](OrganizerRostersApi.md#organizerrosterscontrollerexportpaymentreport) | **GET** /organizer/tournaments/{id}/reports/payments/export.csv | Export organizer payment report as CSV |
 | [**organizerRostersControllerExportPayments**](OrganizerRostersApi.md#organizerrosterscontrollerexportpayments) | **GET** /organizer/tournaments/{id}/payments/export.csv | Export payment summaries for one owned organizer tournament as CSV |
+| [**organizerRostersControllerExportRegistrationReport**](OrganizerRostersApi.md#organizerrosterscontrollerexportregistrationreport) | **GET** /organizer/tournaments/{id}/reports/registrations/export.csv | Export organizer registration report as CSV |
 | [**organizerRostersControllerExportRegistrations**](OrganizerRostersApi.md#organizerrosterscontrollerexportregistrations) | **GET** /organizer/tournaments/{id}/registrations/export.csv | Export registrations for one owned organizer tournament as CSV |
 | [**organizerRostersControllerExportTeams**](OrganizerRostersApi.md#organizerrosterscontrollerexportteams) | **GET** /organizer/tournaments/{id}/teams/export.csv | Export teams and members for one owned organizer tournament as CSV |
 | [**organizerRostersControllerFindParticipants**](OrganizerRostersApi.md#organizerrosterscontrollerfindparticipants) | **GET** /organizer/tournaments/{id}/participants | List roster participants for one owned organizer tournament |
@@ -23,6 +25,7 @@ All URIs are relative to *http://localhost*
 | [**organizerRostersControllerFindRegistrations**](OrganizerRostersApi.md#organizerrosterscontrollerfindregistrations) | **GET** /organizer/tournaments/{id}/registrations | List registrations for one owned organizer tournament |
 | [**organizerRostersControllerFindTeam**](OrganizerRostersApi.md#organizerrosterscontrollerfindteam) | **GET** /organizer/tournaments/{id}/teams/{teamId} | Get one team with members |
 | [**organizerRostersControllerFindTeams**](OrganizerRostersApi.md#organizerrosterscontrollerfindteams) | **GET** /organizer/tournaments/{id}/teams | List teams for one owned organizer tournament |
+| [**organizerRostersControllerGetReportSummary**](OrganizerRostersApi.md#organizerrosterscontrollergetreportsummary) | **GET** /organizer/tournaments/{id}/reports/summary | Get organizer-owned tournament reporting summary |
 | [**organizerRostersControllerGetSummary**](OrganizerRostersApi.md#organizerrosterscontrollergetsummary) | **GET** /organizer/tournaments/{id}/roster-summary | Get roster summary for one owned organizer tournament |
 | [**organizerRostersControllerRejectRegistration**](OrganizerRostersApi.md#organizerrosterscontrollerrejectregistration) | **PATCH** /organizer/tournaments/{id}/registrations/{registrationId}/reject | Reject one pending registration |
 | [**organizerRostersControllerUpdateParticipant**](OrganizerRostersApi.md#organizerrosterscontrollerupdateparticipant) | **PATCH** /organizer/tournaments/{id}/participants/{participantId} | Update one roster participant |
@@ -767,9 +770,93 @@ example().catch(console.error);
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## organizerRostersControllerExportPaymentReport
+
+> organizerRostersControllerExportPaymentReport(id, categoryId, search, status, from, to)
+
+Export organizer payment report as CSV
+
+### Example
+
+```ts
+import {
+  Configuration,
+  OrganizerRostersApi,
+} from '';
+import type { OrganizerRostersControllerExportPaymentReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new OrganizerRostersApi(config);
+
+  const body = {
+    // string
+    id: id_example,
+    // string (optional)
+    categoryId: 85e9f43b-a6cb-46ee-95e9-bad0955c6308,
+    // string (optional)
+    search: aarav,
+    // 'not_required' | 'pending_offline' | 'paid' | 'failed' | 'refunded' | 'waived' (optional)
+    status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies OrganizerRostersControllerExportPaymentReportRequest;
+
+  try {
+    const data = await api.organizerRostersControllerExportPaymentReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## organizerRostersControllerExportPayments
 
-> organizerRostersControllerExportPayments(id, categoryId, search, status)
+> organizerRostersControllerExportPayments(id, categoryId, search, status, from, to)
 
 Export payment summaries for one owned organizer tournament as CSV
 
@@ -799,6 +886,10 @@ async function example() {
     search: aarav,
     // 'not_required' | 'pending_offline' | 'paid' | 'failed' | 'refunded' | 'waived' (optional)
     status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies OrganizerRostersControllerExportPaymentsRequest;
 
   try {
@@ -822,6 +913,92 @@ example().catch(console.error);
 | **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## organizerRostersControllerExportRegistrationReport
+
+> organizerRostersControllerExportRegistrationReport(id, categoryId, search, status, from, to)
+
+Export organizer registration report as CSV
+
+### Example
+
+```ts
+import {
+  Configuration,
+  OrganizerRostersApi,
+} from '';
+import type { OrganizerRostersControllerExportRegistrationReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new OrganizerRostersApi(config);
+
+  const body = {
+    // string
+    id: id_example,
+    // string (optional)
+    categoryId: 85e9f43b-a6cb-46ee-95e9-bad0955c6308,
+    // string (optional)
+    search: aarav,
+    // 'pending' | 'confirmed' | 'rejected' | 'cancelled' (optional)
+    status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies OrganizerRostersControllerExportRegistrationReportRequest;
+
+  try {
+    const data = await api.organizerRostersControllerExportRegistrationReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -847,7 +1024,7 @@ example().catch(console.error);
 
 ## organizerRostersControllerExportRegistrations
 
-> organizerRostersControllerExportRegistrations(id, categoryId, search, status)
+> organizerRostersControllerExportRegistrations(id, categoryId, search, status, from, to)
 
 Export registrations for one owned organizer tournament as CSV
 
@@ -877,6 +1054,10 @@ async function example() {
     search: aarav,
     // 'pending' | 'confirmed' | 'rejected' | 'cancelled' (optional)
     status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies OrganizerRostersControllerExportRegistrationsRequest;
 
   try {
@@ -900,6 +1081,8 @@ example().catch(console.error);
 | **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1153,7 +1336,7 @@ example().catch(console.error);
 
 ## organizerRostersControllerFindPayments
 
-> OrganizerPaymentListApiResponseDto organizerRostersControllerFindPayments(id, categoryId, search, status)
+> OrganizerPaymentListApiResponseDto organizerRostersControllerFindPayments(id, categoryId, search, status, from, to)
 
 List manual registration payments for one owned organizer tournament
 
@@ -1183,6 +1366,10 @@ async function example() {
     search: aarav,
     // 'not_required' | 'pending_offline' | 'paid' | 'failed' | 'refunded' | 'waived' (optional)
     status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies OrganizerRostersControllerFindPaymentsRequest;
 
   try {
@@ -1206,6 +1393,8 @@ example().catch(console.error);
 | **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **status** | `not_required`, `pending_offline`, `paid`, `failed`, `refunded`, `waived` |  | [Optional] [Defaults to `undefined`] [Enum: not_required, pending_offline, paid, failed, refunded, waived] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1231,7 +1420,7 @@ example().catch(console.error);
 
 ## organizerRostersControllerFindRegistrations
 
-> OrganizerRegistrationListApiResponseDto organizerRostersControllerFindRegistrations(id, categoryId, search, status)
+> OrganizerRegistrationListApiResponseDto organizerRostersControllerFindRegistrations(id, categoryId, search, status, from, to)
 
 List registrations for one owned organizer tournament
 
@@ -1261,6 +1450,10 @@ async function example() {
     search: aarav,
     // 'pending' | 'confirmed' | 'rejected' | 'cancelled' (optional)
     status: status_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
   } satisfies OrganizerRostersControllerFindRegistrationsRequest;
 
   try {
@@ -1284,6 +1477,8 @@ example().catch(console.error);
 | **categoryId** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **status** | `pending`, `confirmed`, `rejected`, `cancelled` |  | [Optional] [Defaults to `undefined`] [Enum: pending, confirmed, rejected, cancelled] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1438,6 +1633,81 @@ example().catch(console.error);
 ### Return type
 
 [**OrganizerTeamListApiResponseDto**](OrganizerTeamListApiResponseDto.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## organizerRostersControllerGetReportSummary
+
+> OrganizerTournamentReportSummaryApiResponseDto organizerRostersControllerGetReportSummary(id, from, to)
+
+Get organizer-owned tournament reporting summary
+
+### Example
+
+```ts
+import {
+  Configuration,
+  OrganizerRostersApi,
+} from '';
+import type { OrganizerRostersControllerGetReportSummaryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({ 
+    // Configure HTTP bearer authorization: bearer
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new OrganizerRostersApi(config);
+
+  const body = {
+    // string
+    id: id_example,
+    // string (optional)
+    from: 2026-06-01,
+    // string (optional)
+    to: 2026-06-30,
+  } satisfies OrganizerRostersControllerGetReportSummaryRequest;
+
+  try {
+    const data = await api.organizerRostersControllerGetReportSummary(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**OrganizerTournamentReportSummaryApiResponseDto**](OrganizerTournamentReportSummaryApiResponseDto.md)
 
 ### Authorization
 

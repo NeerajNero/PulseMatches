@@ -10,6 +10,18 @@ export class AdminDbService {
     return this.repository.getDashboardCounts();
   }
 
+  checkDatabase() {
+    return this.repository.checkDatabase();
+  }
+
+  getOperationsStatus(input: { staleNotificationBefore: Date; stalePaymentIntentBefore: Date }) {
+    return this.repository.getOperationsStatus(input);
+  }
+
+  getPlatformReportSummary(createdAt?: Prisma.DateTimeFilter) {
+    return this.repository.getPlatformReportSummary(createdAt);
+  }
+
   listUsers(where: Prisma.UserWhereInput, pagination: PaginationInput) {
     return this.repository.listUsers(where, pagination);
   }

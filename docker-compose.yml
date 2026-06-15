@@ -49,6 +49,15 @@ x-backend-service: &backend-service
     RAZORPAY_CHECKOUT_NAME: ${RAZORPAY_CHECKOUT_NAME:-MatchFlow Arena}
     RAZORPAY_CHECKOUT_DESCRIPTION: ${RAZORPAY_CHECKOUT_DESCRIPTION:-Tournament registration fee}
     EXPORT_MAX_ROWS: ${EXPORT_MAX_ROWS:-5000}
+    OPS_STALE_NOTIFICATION_MINUTES: ${OPS_STALE_NOTIFICATION_MINUTES:-30}
+    OPS_STALE_PAYMENT_INTENT_MINUTES: ${OPS_STALE_PAYMENT_INTENT_MINUTES:-60}
+    OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: ${OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD:-10}
+    OPS_FAILED_PAYMENT_ALERT_THRESHOLD: ${OPS_FAILED_PAYMENT_ALERT_THRESHOLD:-5}
+    RATE_LIMIT_TTL_SECONDS: ${RATE_LIMIT_TTL_SECONDS:-60}
+    RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-120}
+    AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS:-20}
+    PAYMENT_RATE_LIMIT_MAX_REQUESTS: ${PAYMENT_RATE_LIMIT_MAX_REQUESTS:-30}
+    EXPORT_RATE_LIMIT_MAX_REQUESTS: ${EXPORT_RATE_LIMIT_MAX_REQUESTS:-20}
   networks:
     - matchflow
 
@@ -132,7 +141,7 @@ services:
       backend:
         condition: service_healthy
     environment:
-      API_URL: ${API_URL:-http://backend:3010}
+      API_URL: ${DOCKER_SMOKE_API_URL:-http://backend:3010}
     command: pnpm smoke:mvp
     restart: "no"
     healthcheck:
@@ -144,6 +153,11 @@ services:
       backend:
         condition: service_healthy
     environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-matchflow}:${POSTGRES_PASSWORD:-matchflow_dev_password}@postgres:5432/${POSTGRES_DB:-matchflow_arena}}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
       NOTIFICATION_PROCESS_REQUIRE_WORK: ${NOTIFICATION_PROCESS_REQUIRE_WORK:-}
     command: pnpm --filter @matchflow/backend notifications:process
     restart: "no"

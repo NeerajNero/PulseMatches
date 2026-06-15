@@ -13,11 +13,14 @@ import {
   TournamentStatus
 } from "@prisma/client";
 import { createCsv, type CsvRow } from "../../common/utils/csv.util";
+import { parseDateRange, toCreatedAtRange } from "../../common/utils/date-range.util";
+import { checkTcpReachable } from "../../common/utils/tcp-check.util";
 import { AdminDbService } from "../../db/admin/admin-db.service";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { AdminTransform } from "./admin.transform";
 import {
   AdminAuditEventsQueryDto,
+  AdminDateRangeQueryDto,
   AdminNotificationsQueryDto,
   AdminOrganizersQueryDto,
   AdminPaginationQueryDto,
@@ -40,6 +43,105 @@ export class AdminService {
 
   async getDashboard() {
     return this.transform.toDashboard(await this.db.getDashboardCounts());
+  }
+
+  async getOperationsStatus() {
+    const thresholds = {
+      stale_notification_minutes: this.config.get<number>("OPS_STALE_NOTIFICATION_MINUTES") ?? 30,
+      stale_payment_intent_minutes: this.config.get<number>("OPS_STALE_PAYMENT_INTENT_MINUTES") ?? 60,
+      failed_notification_alert_threshold: this.config.get<number>("OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD") ?? 10,
+      failed_payment_alert_threshold: this.config.get<number>("OPS_FAILED_PAYMENT_ALERT_THRESHOLD") ?? 5
+    };
+    const now = Date.now();
+    const [databaseOk, redisOk, operations] = await Promise.all([
+      this.db.checkDatabase(),
+      checkTcpReachable({
+        host: this.config.get<string>("REDIS_HOST", "localhost"),
+        port: this.config.get<number>("REDIS_PORT", 56379)
+      }),
+      this.db.getOperationsStatus({
+        staleNotificationBefore: new Date(now - thresholds.stale_notification_minutes * 60_000),
+        stalePaymentIntentBefore: new Date(now - thresholds.stale_payment_intent_minutes * 60_000)
+      })
+    ]);
+    const dependencies = [
+      { name: "database", status: databaseOk ? "ok" as const : "critical" as const },
+      { name: "redis", status: redisOk ? "ok" as const : "critical" as const }
+    ];
+    const status = this.getOperationsSeverity({
+      databaseOk,
+      redisOk,
+      failedNotifications: operations.failedNotifications,
+      staleProcessingNotifications: operations.staleProcessingNotifications,
+      stalePaymentIntents: operations.stalePaymentIntents,
+      failedPaymentIntents: operations.failedPaymentIntents,
+      failedPaymentEvents: operations.failedPaymentEvents,
+      latestReconciliationStatus: operations.latestReconciliationRun?.status ?? null,
+      failedNotificationThreshold: thresholds.failed_notification_alert_threshold,
+      failedPaymentThreshold: thresholds.failed_payment_alert_threshold
+    });
+
+    return {
+      status,
+      service_name: this.config.get<string>("SERVICE_NAME", "matchflow-arena-api"),
+      app_version: this.config.get<string>("APP_VERSION", "0.1.0"),
+      checked_at: new Date().toISOString(),
+      dependencies,
+      payment_provider: this.config.get<string>("PAYMENT_PROVIDER", "manual"),
+      notification_provider: this.config.get<string>("NOTIFICATION_PROVIDER", "noop"),
+      export_max_rows: this.config.get<number>("EXPORT_MAX_ROWS") ?? 5000,
+      pending_notifications: operations.pendingNotifications,
+      failed_notifications: operations.failedNotifications,
+      stale_processing_notifications: operations.staleProcessingNotifications,
+      stale_payment_intents: operations.stalePaymentIntents,
+      failed_payment_intents: operations.failedPaymentIntents,
+      failed_payment_events: operations.failedPaymentEvents,
+      latest_reconciliation_run: {
+        id: operations.latestReconciliationRun?.id ?? null,
+        provider: operations.latestReconciliationRun ? this.toApiEnum(operations.latestReconciliationRun.provider) : null,
+        status: operations.latestReconciliationRun ? this.toApiEnum(operations.latestReconciliationRun.status) : null,
+        started_at: operations.latestReconciliationRun?.startedAt.toISOString() ?? null,
+        completed_at: operations.latestReconciliationRun?.completedAt?.toISOString() ?? null
+      },
+      thresholds
+    };
+  }
+
+  async getReportSummary(query: AdminDateRangeQueryDto) {
+    const summary = await this.db.getPlatformReportSummary(toCreatedAtRange(parseDateRange(query)));
+    return {
+      users_by_role: summary.usersByRole.map((item) => ({
+        key: this.toApiEnum(item.role),
+        count: item._count._all
+      })),
+      organizers_by_verification_status: summary.organizersByVerificationStatus.map((item) => ({
+        key: this.toApiEnum(item.verificationStatus),
+        count: item._count._all
+      })),
+      tournaments_by_status: summary.tournamentsByStatus.map((item) => ({
+        key: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      registrations_by_status: summary.registrationsByStatus.map((item) => ({
+        key: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      payments_by_provider_status: summary.paymentsByProviderStatus.map((item) => ({
+        provider: this.toApiEnum(item.provider),
+        status: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      total_paid_amount: summary.totalPaidAmount,
+      total_refunded_amount: summary.totalRefundedAmount,
+      notifications_by_status: summary.notificationsByStatus.map((item) => ({
+        key: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      reconciliation_by_status: summary.reconciliationByStatus.map((item) => ({
+        key: this.toApiEnum(item.status),
+        count: item._count._all
+      }))
+    };
   }
 
   async listUsers(query: AdminUsersQueryDto) {
@@ -298,22 +400,7 @@ export class AdminService {
 
   async listRegistrations(query: AdminRegistrationsQueryDto) {
     const pagination = this.getPagination(query);
-    const search = query.search?.trim();
-    const result = await this.db.listRegistrations({
-      ...(search
-        ? {
-          OR: [
-            { playerName: { contains: search, mode: "insensitive" } },
-            { user: { email: { contains: search, mode: "insensitive" } } },
-            { user: { displayName: { contains: search, mode: "insensitive" } } },
-            { tournament: { title: { contains: search, mode: "insensitive" } } }
-          ]
-        }
-        : {}),
-      ...(query.status ? { status: this.toPrismaEnum(query.status) as RegistrationStatus } : {}),
-      ...(query.payment_status ? { paymentStatus: this.toPrismaEnum(query.payment_status) as RegistrationPaymentStatus } : {}),
-      ...(query.tournament_id ? { tournamentId: query.tournament_id } : {})
-    }, pagination);
+    const result = await this.db.listRegistrations(this.buildRegistrationsWhere(query), pagination);
 
     return this.transform.toList(
       result.items.map((registration) => this.transform.toRegistration(registration)),
@@ -354,25 +441,40 @@ export class AdminService {
     ], rows);
   }
 
+  async exportRegistrationReport(query: AdminRegistrationsQueryDto, currentUser: AuthenticatedUser) {
+    const result = await this.db.listRegistrations(this.buildRegistrationsWhere(query), this.getExportPagination());
+    this.assertExportLimit(result.items.length);
+    const rows = result.items.map((registration) => {
+      const safeRegistration = this.transform.toRegistration(registration);
+      return {
+        id: safeRegistration.id,
+        playerName: safeRegistration.player_name,
+        playerEmail: safeRegistration.player.email,
+        tournamentId: safeRegistration.tournament_id,
+        tournamentTitle: safeRegistration.tournament_title,
+        categoryName: safeRegistration.category_name ?? "",
+        status: safeRegistration.status,
+        paymentStatus: safeRegistration.payment_status,
+        createdAt: safeRegistration.created_at
+      } satisfies CsvRow;
+    });
+    await this.auditExport(currentUser.id, "admin.export_registration_report", query, rows.length);
+    return this.toCsvExport("admin-registration-report", [
+      "id",
+      "playerName",
+      "playerEmail",
+      "tournamentId",
+      "tournamentTitle",
+      "categoryName",
+      "status",
+      "paymentStatus",
+      "createdAt"
+    ], rows);
+  }
+
   async listPayments(query: AdminPaymentsQueryDto) {
     const pagination = this.getPagination(query);
-    const search = query.search?.trim();
-    const result = await this.db.listPayments({
-      ...(search
-        ? {
-          OR: [
-            { reference: { contains: search, mode: "insensitive" } },
-            { registration: { playerName: { contains: search, mode: "insensitive" } } },
-            { registration: { user: { email: { contains: search, mode: "insensitive" } } } },
-            { registration: { tournament: { title: { contains: search, mode: "insensitive" } } } }
-          ]
-        }
-        : {}),
-      ...(query.provider ? { provider: this.toPrismaEnum(query.provider) as PaymentProvider } : {}),
-      ...(query.status ? { status: this.toPrismaEnum(query.status) as RegistrationPaymentStatus } : {}),
-      ...(query.tournament_id ? { tournamentId: query.tournament_id } : {}),
-      ...(query.registration_id ? { registrationId: query.registration_id } : {})
-    }, pagination);
+    const result = await this.db.listPayments(this.buildPaymentsWhere(query), pagination);
 
     return this.transform.toList(
       result.items.map((payment) => this.transform.toPayment(payment)),
@@ -409,6 +511,53 @@ export class AdminService {
     });
     await this.auditExport(currentUser.id, "admin.export_payments", query, rows.length);
     return this.toCsvExport("admin-payments", [
+      "paymentRecordId",
+      "registrationId",
+      "tournamentId",
+      "tournamentTitle",
+      "playerName",
+      "playerEmail",
+      "provider",
+      "mode",
+      "status",
+      "amount",
+      "currency",
+      "paidAt",
+      "refundCount",
+      "refundedAmount",
+      "latestIntentStatus",
+      "eventCount",
+      "updatedAt"
+    ], rows);
+  }
+
+  async exportPaymentReport(query: AdminPaymentsQueryDto, currentUser: AuthenticatedUser) {
+    const result = await this.db.listPayments(this.buildPaymentsWhere(query), this.getExportPagination());
+    this.assertExportLimit(result.items.length);
+    const rows = result.items.map((payment) => {
+      const safePayment = this.transform.toPayment(payment);
+      return {
+        paymentRecordId: safePayment.id,
+        registrationId: safePayment.registration_id,
+        tournamentId: safePayment.tournament_id,
+        tournamentTitle: safePayment.tournament_title,
+        playerName: safePayment.player.display_name,
+        playerEmail: safePayment.player.email,
+        provider: safePayment.provider,
+        mode: safePayment.mode,
+        status: safePayment.status,
+        amount: safePayment.amount,
+        currency: safePayment.currency,
+        paidAt: safePayment.paid_at ?? "",
+        refundCount: safePayment.refund_count,
+        refundedAmount: safePayment.refunded_amount,
+        latestIntentStatus: safePayment.latest_intent_status ?? "",
+        eventCount: safePayment.event_count,
+        updatedAt: safePayment.updated_at
+      } satisfies CsvRow;
+    });
+    await this.auditExport(currentUser.id, "admin.export_payment_report", query, rows.length);
+    return this.toCsvExport("admin-payment-report", [
       "paymentRecordId",
       "registrationId",
       "tournamentId",
@@ -538,10 +687,7 @@ export class AdminService {
 
   async listReconciliationRuns(query: AdminReconciliationRunsQueryDto) {
     const pagination = this.getPagination(query);
-    const result = await this.db.listReconciliationRuns({
-      ...(query.provider ? { provider: this.toPrismaEnum(query.provider) as PaymentProvider } : {}),
-      ...(query.status ? { status: this.toPrismaEnum(query.status) as PaymentReconciliationStatus } : {})
-    }, pagination);
+    const result = await this.db.listReconciliationRuns(this.buildReconciliationRunsWhere(query), pagination);
 
     return this.transform.toList(
       result.items.map((run) => this.transform.toReconciliationRun(run)),
@@ -549,6 +695,36 @@ export class AdminService {
       pagination.limit,
       result.total
     );
+  }
+
+  async exportReconciliationRuns(query: AdminReconciliationRunsQueryDto, currentUser: AuthenticatedUser) {
+    const result = await this.db.listReconciliationRuns(this.buildReconciliationRunsWhere(query), this.getExportPagination());
+    this.assertExportLimit(result.items.length);
+    const rows = result.items.map((run) => ({
+      id: run.id,
+      provider: this.toApiEnum(run.provider),
+      status: this.toApiEnum(run.status),
+      startedAt: run.startedAt.toISOString(),
+      completedAt: run.completedAt?.toISOString() ?? "",
+      checkedCount: run.checkedCount,
+      updatedCount: run.updatedCount,
+      failedCount: run.failedCount,
+      summary: this.truncate(JSON.stringify(this.summarizeJson(run.summary)), 500),
+      error: this.truncate(run.error, 500) ?? ""
+    } satisfies CsvRow));
+    await this.auditExport(currentUser.id, "admin.export_reconciliation_runs", query, rows.length);
+    return this.toCsvExport("admin-reconciliation-runs", [
+      "id",
+      "provider",
+      "status",
+      "startedAt",
+      "completedAt",
+      "checkedCount",
+      "updatedCount",
+      "failedCount",
+      "summary",
+      "error"
+    ], rows);
   }
 
   async listAuditEvents(query: AdminAuditEventsQueryDto) {
@@ -682,6 +858,7 @@ export class AdminService {
 
   private buildRegistrationsWhere(query: AdminRegistrationsQueryDto): Prisma.RegistrationWhereInput {
     const search = query.search?.trim();
+    const createdAt = toCreatedAtRange(parseDateRange(query));
     return {
       ...(search
         ? {
@@ -695,12 +872,14 @@ export class AdminService {
         : {}),
       ...(query.status ? { status: this.toPrismaEnum(query.status) as RegistrationStatus } : {}),
       ...(query.payment_status ? { paymentStatus: this.toPrismaEnum(query.payment_status) as RegistrationPaymentStatus } : {}),
-      ...(query.tournament_id ? { tournamentId: query.tournament_id } : {})
+      ...(query.tournament_id ? { tournamentId: query.tournament_id } : {}),
+      ...(createdAt ? { createdAt } : {})
     };
   }
 
   private buildPaymentsWhere(query: AdminPaymentsQueryDto): Prisma.PaymentRecordWhereInput {
     const search = query.search?.trim();
+    const createdAt = toCreatedAtRange(parseDateRange(query));
     return {
       ...(search
         ? {
@@ -715,7 +894,17 @@ export class AdminService {
       ...(query.provider ? { provider: this.toPrismaEnum(query.provider) as PaymentProvider } : {}),
       ...(query.status ? { status: this.toPrismaEnum(query.status) as RegistrationPaymentStatus } : {}),
       ...(query.tournament_id ? { tournamentId: query.tournament_id } : {}),
-      ...(query.registration_id ? { registrationId: query.registration_id } : {})
+      ...(query.registration_id ? { registrationId: query.registration_id } : {}),
+      ...(createdAt ? { createdAt } : {})
+    };
+  }
+
+  private buildReconciliationRunsWhere(query: AdminReconciliationRunsQueryDto): Prisma.PaymentReconciliationRunWhereInput {
+    const startedAt = toCreatedAtRange(parseDateRange(query));
+    return {
+      ...(query.provider ? { provider: this.toPrismaEnum(query.provider) as PaymentProvider } : {}),
+      ...(query.status ? { status: this.toPrismaEnum(query.status) as PaymentReconciliationStatus } : {}),
+      ...(startedAt ? { startedAt } : {})
     };
   }
 
@@ -774,6 +963,40 @@ export class AdminService {
     return this.config.get<number>("EXPORT_MAX_ROWS") ?? 5000;
   }
 
+  private getOperationsSeverity(input: {
+    databaseOk: boolean;
+    redisOk: boolean;
+    failedNotifications: number;
+    staleProcessingNotifications: number;
+    stalePaymentIntents: number;
+    failedPaymentIntents: number;
+    failedPaymentEvents: number;
+    latestReconciliationStatus: PaymentReconciliationStatus | null;
+    failedNotificationThreshold: number;
+    failedPaymentThreshold: number;
+  }): "ok" | "warning" | "critical" {
+    if (!input.databaseOk || !input.redisOk) {
+      return "critical";
+    }
+    if (
+      input.failedNotifications >= input.failedNotificationThreshold ||
+      input.failedPaymentIntents >= input.failedPaymentThreshold
+    ) {
+      return "critical";
+    }
+    if (
+      input.failedNotifications > 0 ||
+      input.staleProcessingNotifications > 0 ||
+      input.stalePaymentIntents > 0 ||
+      input.failedPaymentIntents > 0 ||
+      input.failedPaymentEvents > 0 ||
+      input.latestReconciliationStatus === PaymentReconciliationStatus.FAILED
+    ) {
+      return "warning";
+    }
+    return "ok";
+  }
+
   private auditExport(actorId: string, action: string, filters: AdminPaginationQueryDto, rowCount: number) {
     return this.db.createAuditLog({
       actorId,
@@ -803,6 +1026,32 @@ export class AdminService {
       Object.entries(filters)
         .filter(([, value]) => value !== undefined && value !== null && value !== "")
         .map(([key, value]) => [key, String(value)])
+    );
+  }
+
+  private toApiEnum(value: string): string {
+    return value.toLowerCase();
+  }
+
+  private truncate(value: string | null, maxLength: number): string | null {
+    if (!value || value.length <= maxLength) {
+      return value;
+    }
+    return `${value.slice(0, maxLength)}...`;
+  }
+
+  private summarizeJson(value: Prisma.JsonValue): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+
+    const blocked = ["secret", "token", "password", "raw", "payload"];
+    const source = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(source).filter(([key, item]) => (
+        !blocked.some((marker) => key.toLowerCase().includes(marker))
+        && (typeof item === "string" || typeof item === "number" || typeof item === "boolean")
+      ))
     );
   }
 }

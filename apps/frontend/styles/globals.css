@@ -816,6 +816,14 @@ a {
   margin: 0;
 }
 
+.admin-detail-list {
+  color: var(--muted);
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+}
+
 .detail-categories {
   padding-left: 0;
   padding-right: 0;
@@ -1064,6 +1072,14 @@ a {
   display: grid;
   gap: 8px;
   justify-items: end;
+}
+
+.export-action-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .export-error {
@@ -1546,6 +1562,10 @@ a {
   .export-action-group,
   .export-action-group .secondary-action {
     justify-items: stretch;
+    width: 100%;
+  }
+
+  .export-action-row {
     width: 100%;
   }
 

@@ -2,6 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import type { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
@@ -11,8 +12,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const config = app.get(ConfigService);
   const corsOrigins = config.get<string>("CORS_ORIGINS", "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  const expressApp = app.getHttpAdapter().getInstance();
 
+  if (typeof expressApp.disable === "function") {
+    expressApp.disable("x-powered-by");
+  }
   app.use(helmet());
+  app.use((_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    next();
+  });
   app.enableCors({
     origin: corsOrigins.length > 0 ? corsOrigins : true,
     credentials: true

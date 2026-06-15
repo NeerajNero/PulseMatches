@@ -54,6 +54,15 @@ env:
   RAZORPAY_WEBHOOK_SECRET: ""
   RAZORPAY_CHECKOUT_NAME: MatchFlow Arena
   RAZORPAY_CHECKOUT_DESCRIPTION: Tournament registration fee
+  OPS_STALE_NOTIFICATION_MINUTES: "30"
+  OPS_STALE_PAYMENT_INTENT_MINUTES: "60"
+  OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: "10"
+  OPS_FAILED_PAYMENT_ALERT_THRESHOLD: "5"
+  RATE_LIMIT_TTL_SECONDS: "60"
+  RATE_LIMIT_MAX_REQUESTS: "120"
+  AUTH_RATE_LIMIT_MAX_REQUESTS: "40"
+  PAYMENT_RATE_LIMIT_MAX_REQUESTS: "60"
+  EXPORT_RATE_LIMIT_MAX_REQUESTS: "40"
 
 jobs:
   mvp-readiness:
@@ -104,6 +113,9 @@ jobs:
 
       - name: Check smoke script syntax
         run: node --check scripts/mvp-smoke.mjs
+
+      - name: Check runtime configuration
+        run: pnpm config:check
 
       - name: Generate Prisma client
         run: pnpm --filter @matchflow/backend prisma:generate
@@ -158,6 +170,9 @@ jobs:
           echo "Backend did not become healthy"
           cat backend-ci.log
           exit 1
+
+      - name: Check backend readiness
+        run: curl -fsS http://127.0.0.1:3010/health/ready
 
       - name: MVP API smoke
         run: pnpm smoke:mvp

@@ -1,11 +1,23 @@
 "use client";
 
+import { FormEvent, useState } from "react";
 import { formatAdminDate, formatAdminLabel } from "@/components/custom/admin/admin-format";
-import { useAdminDashboard } from "@/hooks/use-admin";
+import { useAdminDashboard, useAdminReportSummary } from "@/hooks/use-admin";
 import { ROUTES } from "@/utils/route";
 
 export function AdminDashboardView() {
+  const [reportFilters, setReportFilters] = useState({ from: "", to: "" });
   const dashboard = useAdminDashboard();
+  const report = useAdminReportSummary(reportFilters);
+
+  function onReportFilter(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setReportFilters({
+      from: String(form.get("from") ?? ""),
+      to: String(form.get("to") ?? "")
+    });
+  }
 
   if (dashboard.isLoading) {
     return <p className="state-text compact-state">Loading support dashboard.</p>;
@@ -69,6 +81,52 @@ export function AdminDashboardView() {
           </article>
         </div>
       </section>
+
+      <section className="organizer-panel">
+        <div className="section-heading organizer-section-heading">
+          <div>
+            <h2>Platform report summary</h2>
+            <p>Date-filtered read-only aggregates for registrations, payments, notifications, and reconciliation.</p>
+          </div>
+        </div>
+        <form className="filter-bar organizer-filter-bar admin-filter-bar" onSubmit={onReportFilter}>
+          <label>
+            <span>From</span>
+            <input name="from" type="date" defaultValue={reportFilters.from} />
+          </label>
+          <label>
+            <span>To</span>
+            <input name="to" type="date" defaultValue={reportFilters.to} />
+          </label>
+          <button className="primary-action filter-action" type="submit">Apply range</button>
+        </form>
+        {report.isLoading ? <p className="state-text compact-state">Loading report summary.</p> : null}
+        {report.isError ? <p className="form-error">Unable to load platform report summary.</p> : null}
+        {report.data ? (
+          <section className="dashboard-grid organizer-stat-grid admin-stat-grid" aria-label="Platform report aggregates">
+            <article className="feature-tile admin-stat-card">
+              <span>Paid amount</span>
+              <h3>INR {report.data.totalPaidAmount}</h3>
+            </article>
+            <article className="feature-tile admin-stat-card">
+              <span>Refunded amount</span>
+              <h3>INR {report.data.totalRefundedAmount}</h3>
+            </article>
+            <article className="feature-tile admin-stat-card">
+              <span>Confirmed registrations</span>
+              <h3>{getCount(report.data.registrationsByStatus, "confirmed")}</h3>
+            </article>
+            <article className="feature-tile admin-stat-card">
+              <span>Failed notifications</span>
+              <h3>{getCount(report.data.notificationsByStatus, "failed")}</h3>
+            </article>
+          </section>
+        ) : null}
+      </section>
     </>
   );
+}
+
+function getCount(items: Array<{ key: string; count: number }>, key: string) {
+  return items.find((item) => item.key === key)?.count ?? 0;
 }

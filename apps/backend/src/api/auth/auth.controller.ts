@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import {
   AuthApiResponseDto,
@@ -20,6 +21,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("signup")
+  @RateLimit({ bucket: "auth" })
   @ApiOperation({ summary: "Create a player or organizer account" })
   @ApiOkResponse({ type: AuthApiResponseDto })
   signup(@Body() dto: SignupRequestDto) {
@@ -27,6 +29,7 @@ export class AuthController {
   }
 
   @Post("login")
+  @RateLimit({ bucket: "auth" })
   @ApiOperation({ summary: "Log in with email and password" })
   @ApiOkResponse({ type: AuthApiResponseDto })
   login(@Body() dto: LoginRequestDto) {
@@ -34,6 +37,7 @@ export class AuthController {
   }
 
   @Post("refresh")
+  @RateLimit({ bucket: "auth" })
   @ApiOperation({ summary: "Refresh an access token" })
   @ApiOkResponse({ type: AuthApiResponseDto })
   refresh(@Body() dto: RefreshRequestDto) {
@@ -58,4 +62,3 @@ export class AuthController {
     return this.authService.getCurrentUser(currentUser);
   }
 }
-

@@ -68,7 +68,7 @@ Docker readiness for local development and validation was hardened to support Do
 - **smoke**
   - Runs `pnpm smoke:mvp`
   - Depends on healthy `backend`
-  - Uses `API_URL` (defaults to `http://backend:3010`)
+  - Uses `DOCKER_SMOKE_API_URL` to set container `API_URL` (defaults to `http://backend:3010`)
 - **notifications-process**
   - Runs `pnpm --filter @matchflow/backend notifications:process`
   - Depends on healthy `backend`
@@ -138,11 +138,41 @@ pnpm docker:smoke
   - `pnpm docker:backend:shell`
   - `pnpm docker:frontend:shell`
 
+### Deterministic docker smoke flow
+
+- `pnpm docker:smoke:full` runs the end-to-end validation flow in one command:
+
+  1. `docker-compose config`
+  2. `docker-compose build backend frontend`
+  3. `docker-compose up -d postgres redis`
+  4. `docker-compose run --rm backend-migrate`
+  5. `docker-compose run --rm backend-seed`
+  6. `docker-compose up -d backend frontend`
+  7. wait for backend health at `http://localhost:3010/health`
+  8. `docker-compose run --rm smoke`
+  9. `docker-compose run --rm notifications-process`
+  10. `docker-compose run --rm payments-reconcile`
+  11. `docker-compose ps`
+  12. `docker-compose logs --tail=20 backend frontend`
+
+- It is intentionally non-destructive: it does not down services, does not reset volumes, and leaves containers running after completion for debugging if needed.
+
+#### Prerequisites and behavior
+
+- requires `.env` to exist. If missing, command exits with guidance:
+
+```bash
+cp .env.docker.example .env
+```
+
+- uses docker-safe defaults (`PAYMENT_PROVIDER=mock`, `NOTIFICATION_PROVIDER=noop`).
+- does not require real SMTP/Razorpay credentials.
+
 ## Migration/seed/smoke behavior in Docker
 
 - Migrations and seed are **not** run automatically when starting `pnpm docker:up`.
 - They must be explicitly invoked via `pnpm docker:migrate` and `pnpm docker:seed`.
-- Smoke assumes backend API is up and uses `API_URL` to target Docker service URL by default (`http://backend:3010`).
+- Smoke assumes backend API is up and uses `DOCKER_SMOKE_API_URL` to target Docker service URL by default (`http://backend:3010`).
 - `PAYMENT_PROVIDER` and `NOTIFICATION_PROVIDER` defaults ensure smoke stays deterministic with no external dependencies.
 
 ## Compose validation
@@ -161,10 +191,19 @@ pnpm docker:smoke
 ## Troubleshooting
 
 - **Port already in use**: update `BACKEND_PORT`, `FRONTEND_PORT`, `POSTGRES_PORT`, `REDIS_PORT` in `.env`.
+- **Missing `.env`**:
+  - create from local template with `cp .env.docker.example .env`
+  - `docker:smoke:full` exits with this requirement when `.env` is not present
+- **Docker daemon/socket permission denied**:
+  - confirm Docker is running and your user can access the socket (`docker info`)
 - **Database not ready**: check `docker-compose logs postgres` and wait for `healthy` status.
 - **Prisma migration errors**:
   - ensure `DATABASE_URL` points to service host `postgres`
   - run `pnpm docker:migrate` after `backend` is healthy
+- **Backend health timeout during smoke flow**:
+  - check startup logs via `pnpm docker:logs`
+  - verify `.env` values for JWT, DB, and Redis connectivity
+  - confirm `postgres` and `redis` reached healthy state before backend start
 - **Backend healthcheck failing**:
   - check startup logs (`pnpm docker:logs`)
   - verify required JWT vars and `DATABASE_URL`
@@ -173,6 +212,11 @@ pnpm docker:smoke
   - verify `backend` service exposes mapped and internal port
 - **Smoke cannot connect**:
   - ensure `API_URL` points to `http://backend:3010` in Docker flow or `http://127.0.0.1:3010` for host backend mode
+- **Migration/seed failures in full flow**:
+  - run service logs: `docker-compose logs backend-migrate backend-seed`
+  - verify DB credentials/ports and that postgres service is healthy
+- **Smoke failure in full flow**:
+  - inspect smoke command output and `docker-compose logs backend` for root causes
 - **Stale node_modules/cache**:
   - rebuild images with `pnpm docker:build`
   - optionally `docker-compose down --volumes` only when you intentionally want data reset

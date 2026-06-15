@@ -23,6 +23,7 @@ export const ROUTES = {
   ADMIN_PAYMENTS: "/admin/payments",
   ADMIN_NOTIFICATIONS: "/admin/notifications",
   ADMIN_RECONCILIATION: "/admin/reconciliation",
+  ADMIN_OPERATIONS: "/admin/operations",
   ADMIN_AUDIT: "/admin/audit"
 } as const;
 

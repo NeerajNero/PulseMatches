@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RoleType } from "@prisma/client";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -22,6 +23,7 @@ export class RegistrationsController {
   constructor(private readonly registrationsService: RegistrationsService) {}
 
   @Post("tournaments/:slugOrId/registrations")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Register the current player for a public tournament" })
   @ApiCreatedResponse({ type: RegistrationApiResponseDto })
   createTournamentRegistration(

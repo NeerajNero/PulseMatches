@@ -41,6 +41,7 @@ export function AdminShell({ children, subtitle, title }: Readonly<AdminShellPro
         <a href={ROUTES.ADMIN_PAYMENTS}>Payments</a>
         <a href={ROUTES.ADMIN_NOTIFICATIONS}>Notifications</a>
         <a href={ROUTES.ADMIN_RECONCILIATION}>Reconciliation</a>
+        <a href={ROUTES.ADMIN_OPERATIONS}>Operations</a>
         <a href={ROUTES.ADMIN_AUDIT}>Audit</a>
         <button
           type="button"

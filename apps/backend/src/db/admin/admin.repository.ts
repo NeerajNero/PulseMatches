@@ -1,5 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { NotificationStatus, OrganizerVerificationStatus, Prisma } from "@prisma/client";
+import {
+  NotificationStatus,
+  PaymentIntentStatus,
+  OrganizerVerificationStatus,
+  PaymentRefundStatus,
+  RegistrationPaymentStatus,
+  Prisma
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 export const adminUserInclude = {
@@ -289,6 +296,153 @@ export class AdminRepository {
       pendingNotifications,
       failedNotifications,
       recentReconciliation
+    };
+  }
+
+  async checkDatabase(): Promise<boolean> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getOperationsStatus(input: { staleNotificationBefore: Date; stalePaymentIntentBefore: Date }) {
+    const [
+      pendingNotifications,
+      failedNotifications,
+      staleProcessingNotifications,
+      stalePaymentIntents,
+      failedPaymentIntents,
+      failedPaymentEvents,
+      latestReconciliationRun
+    ] = await Promise.all([
+      this.prisma.notificationOutbox.count({ where: { status: NotificationStatus.PENDING } }),
+      this.prisma.notificationOutbox.count({ where: { status: NotificationStatus.FAILED } }),
+      this.prisma.notificationOutbox.count({
+        where: {
+          status: NotificationStatus.PROCESSING,
+          updatedAt: { lte: input.staleNotificationBefore }
+        }
+      }),
+      this.prisma.paymentIntent.count({
+        where: {
+          status: {
+            in: [
+              PaymentIntentStatus.CREATED,
+              PaymentIntentStatus.REQUIRES_ACTION,
+              PaymentIntentStatus.PROCESSING
+            ]
+          },
+          createdAt: { lte: input.stalePaymentIntentBefore }
+        }
+      }),
+      this.prisma.paymentIntent.count({ where: { status: PaymentIntentStatus.FAILED } }),
+      this.prisma.paymentEvent.count({
+        where: {
+          OR: [
+            { eventType: { contains: "failed", mode: "insensitive" } },
+            { signatureValid: false }
+          ]
+        }
+      }),
+      this.prisma.paymentReconciliationRun.findFirst({ orderBy: { startedAt: "desc" } })
+    ]);
+
+    return {
+      pendingNotifications,
+      failedNotifications,
+      staleProcessingNotifications,
+      stalePaymentIntents,
+      failedPaymentIntents,
+      failedPaymentEvents,
+      latestReconciliationRun
+    };
+  }
+
+  async getPlatformReportSummary(createdAt?: Prisma.DateTimeFilter) {
+    const userRoleWhere: Prisma.UserRoleWhereInput = createdAt ? { createdAt } : {};
+    const organizerWhere: Prisma.OrganizerProfileWhereInput = createdAt ? { createdAt } : {};
+    const tournamentWhere: Prisma.TournamentWhereInput = createdAt ? { createdAt } : {};
+    const registrationWhere: Prisma.RegistrationWhereInput = createdAt ? { createdAt } : {};
+    const paymentWhere: Prisma.PaymentRecordWhereInput = createdAt ? { createdAt } : {};
+    const refundWhere: Prisma.PaymentRefundWhereInput = {
+      status: { in: [PaymentRefundStatus.MANUAL_RECORDED, PaymentRefundStatus.SUCCEEDED] },
+      ...(createdAt ? { createdAt } : {})
+    };
+    const notificationWhere: Prisma.NotificationOutboxWhereInput = createdAt ? { createdAt } : {};
+    const reconciliationWhere: Prisma.PaymentReconciliationRunWhereInput = createdAt ? { startedAt: createdAt } : {};
+
+    const [
+      usersByRole,
+      organizersByVerificationStatus,
+      tournamentsByStatus,
+      registrationsByStatus,
+      paymentsByProviderStatus,
+      paidAmount,
+      refundedAmount,
+      notificationsByStatus,
+      reconciliationByStatus
+    ] = await Promise.all([
+      this.prisma.userRole.groupBy({
+        by: ["role"],
+        where: userRoleWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.organizerProfile.groupBy({
+        by: ["verificationStatus"],
+        where: organizerWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.tournament.groupBy({
+        by: ["status"],
+        where: tournamentWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.registration.groupBy({
+        by: ["status"],
+        where: registrationWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.paymentRecord.groupBy({
+        by: ["provider", "status"],
+        where: paymentWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.paymentRecord.aggregate({
+        where: {
+          ...paymentWhere,
+          status: RegistrationPaymentStatus.PAID
+        },
+        _sum: { amount: true }
+      }),
+      this.prisma.paymentRefund.aggregate({
+        where: refundWhere,
+        _sum: { amount: true }
+      }),
+      this.prisma.notificationOutbox.groupBy({
+        by: ["status"],
+        where: notificationWhere,
+        _count: { _all: true }
+      }),
+      this.prisma.paymentReconciliationRun.groupBy({
+        by: ["status"],
+        where: reconciliationWhere,
+        _count: { _all: true }
+      })
+    ]);
+
+    return {
+      usersByRole,
+      organizersByVerificationStatus,
+      tournamentsByStatus,
+      registrationsByStatus,
+      paymentsByProviderStatus,
+      totalPaidAmount: paidAmount._sum.amount ?? 0,
+      totalRefundedAmount: refundedAmount._sum.amount ?? 0,
+      notificationsByStatus,
+      reconciliationByStatus
     };
   }
 

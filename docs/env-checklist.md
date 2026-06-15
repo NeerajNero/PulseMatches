@@ -14,6 +14,8 @@
 - `FE_APP_URL`
 - `NEXT_PUBLIC_APP_NAME`
 - `NEXT_PUBLIC_BACKEND_URL`
+- `API_URL`
+- `DOCKER_SMOKE_API_URL`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -25,6 +27,11 @@
 - `JWT_ACCESS_TOKEN_EXPIRY`
 - `JWT_REFRESH_TOKEN_SECRET`
 - `JWT_REFRESH_TOKEN_EXPIRY`
+- `RATE_LIMIT_TTL_SECONDS`
+- `RATE_LIMIT_MAX_REQUESTS`
+- `AUTH_RATE_LIMIT_MAX_REQUESTS`
+- `PAYMENT_RATE_LIMIT_MAX_REQUESTS`
+- `EXPORT_RATE_LIMIT_MAX_REQUESTS`
 
 ## Backend `apps/backend/.env.example`
 
@@ -48,6 +55,11 @@
 - `JWT_REFRESH_TOKEN_SECRET`
 - `JWT_REFRESH_TOKEN_EXPIRY`
 - `FE_APP_URL`
+- `RATE_LIMIT_TTL_SECONDS`
+- `RATE_LIMIT_MAX_REQUESTS`
+- `AUTH_RATE_LIMIT_MAX_REQUESTS`
+- `PAYMENT_RATE_LIMIT_MAX_REQUESTS`
+- `EXPORT_RATE_LIMIT_MAX_REQUESTS`
 
 ## Frontend `apps/frontend/.env.example`
 
@@ -62,3 +74,5 @@
 - New env vars require updates here and in the relevant `.env.example`.
 - Compose backend uses service DNS names inside Docker: `postgres:5432` and `redis:6379`.
 - Host-based backend commands default to `localhost:55432` for Postgres unless `DATABASE_URL` is overridden.
+- `pnpm config:check` validates startup configuration. In production it rejects placeholder JWT secrets, default local frontend/CORS values, missing SMTP config when `NOTIFICATION_PROVIDER=smtp`, and missing Razorpay config when `PAYMENT_PROVIDER=razorpay`.
+- Rate limit env vars are per backend process. Production should also configure edge/load-balancer rate limiting for multi-instance deployments.

@@ -34,6 +34,11 @@ import {
     AdminNotificationsApiResponseDtoToJSON,
 } from '../models/AdminNotificationsApiResponseDto';
 import {
+    type AdminOperationsStatusApiResponseDto,
+    AdminOperationsStatusApiResponseDtoFromJSON,
+    AdminOperationsStatusApiResponseDtoToJSON,
+} from '../models/AdminOperationsStatusApiResponseDto';
+import {
     type AdminOrganizerApiResponseDto,
     AdminOrganizerApiResponseDtoFromJSON,
     AdminOrganizerApiResponseDtoToJSON,
@@ -58,6 +63,11 @@ import {
     AdminPaymentsApiResponseDtoFromJSON,
     AdminPaymentsApiResponseDtoToJSON,
 } from '../models/AdminPaymentsApiResponseDto';
+import {
+    type AdminPlatformReportSummaryApiResponseDto,
+    AdminPlatformReportSummaryApiResponseDtoFromJSON,
+    AdminPlatformReportSummaryApiResponseDtoToJSON,
+} from '../models/AdminPlatformReportSummaryApiResponseDto';
 import {
     type AdminReconciliationRunsApiResponseDto,
     AdminReconciliationRunsApiResponseDtoFromJSON,
@@ -113,6 +123,18 @@ export interface AdminControllerExportOrganizersRequest {
     verificationStatus?: AdminControllerExportOrganizersVerificationStatusEnum;
 }
 
+export interface AdminControllerExportPaymentReportRequest {
+    page?: number;
+    limit?: number;
+    search?: string;
+    provider?: AdminControllerExportPaymentReportProviderEnum;
+    status?: AdminControllerExportPaymentReportStatusEnum;
+    tournamentId?: string;
+    registrationId?: string;
+    from?: string;
+    to?: string;
+}
+
 export interface AdminControllerExportPaymentsRequest {
     page?: number;
     limit?: number;
@@ -121,6 +143,29 @@ export interface AdminControllerExportPaymentsRequest {
     status?: AdminControllerExportPaymentsStatusEnum;
     tournamentId?: string;
     registrationId?: string;
+    from?: string;
+    to?: string;
+}
+
+export interface AdminControllerExportReconciliationRunsRequest {
+    page?: number;
+    limit?: number;
+    search?: string;
+    provider?: AdminControllerExportReconciliationRunsProviderEnum;
+    status?: AdminControllerExportReconciliationRunsStatusEnum;
+    from?: string;
+    to?: string;
+}
+
+export interface AdminControllerExportRegistrationReportRequest {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: AdminControllerExportRegistrationReportStatusEnum;
+    paymentStatus?: AdminControllerExportRegistrationReportPaymentStatusEnum;
+    tournamentId?: string;
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerExportRegistrationsRequest {
@@ -130,6 +175,8 @@ export interface AdminControllerExportRegistrationsRequest {
     status?: AdminControllerExportRegistrationsStatusEnum;
     paymentStatus?: AdminControllerExportRegistrationsPaymentStatusEnum;
     tournamentId?: string;
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerExportTournamentsRequest {
@@ -153,6 +200,11 @@ export interface AdminControllerFindOrganizerDetailRequest {
 
 export interface AdminControllerFindPaymentDetailRequest {
     paymentRecordId: string;
+}
+
+export interface AdminControllerGetReportSummaryRequest {
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerListAuditEventsRequest {
@@ -187,6 +239,8 @@ export interface AdminControllerListPaymentsRequest {
     status?: AdminControllerListPaymentsStatusEnum;
     tournamentId?: string;
     registrationId?: string;
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerListReconciliationRunsRequest {
@@ -195,6 +249,8 @@ export interface AdminControllerListReconciliationRunsRequest {
     search?: string;
     provider?: AdminControllerListReconciliationRunsProviderEnum;
     status?: AdminControllerListReconciliationRunsStatusEnum;
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerListRegistrationsRequest {
@@ -204,6 +260,8 @@ export interface AdminControllerListRegistrationsRequest {
     status?: AdminControllerListRegistrationsStatusEnum;
     paymentStatus?: AdminControllerListRegistrationsPaymentStatusEnum;
     tournamentId?: string;
+    from?: string;
+    to?: string;
 }
 
 export interface AdminControllerListTournamentsRequest {
@@ -441,6 +499,86 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminControllerExportPaymentReport without sending the request
+     */
+    async adminControllerExportPaymentReportRequestOpts(requestParameters: AdminControllerExportPaymentReportRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['provider'] != null) {
+            queryParameters['provider'] = requestParameters['provider'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['tournamentId'] != null) {
+            queryParameters['tournament_id'] = requestParameters['tournamentId'];
+        }
+
+        if (requestParameters['registrationId'] != null) {
+            queryParameters['registration_id'] = requestParameters['registrationId'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/admin/reports/payments/export.csv`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Export platform payment report as CSV
+     */
+    async adminControllerExportPaymentReportRaw(requestParameters: AdminControllerExportPaymentReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.adminControllerExportPaymentReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Export platform payment report as CSV
+     */
+    async adminControllerExportPaymentReport(requestParameters: AdminControllerExportPaymentReportRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.adminControllerExportPaymentReportRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for adminControllerExportPayments without sending the request
      */
     async adminControllerExportPaymentsRequestOpts(requestParameters: AdminControllerExportPaymentsRequest): Promise<runtime.RequestOpts> {
@@ -472,6 +610,14 @@ export class AdminApi extends runtime.BaseAPI {
 
         if (requestParameters['registrationId'] != null) {
             queryParameters['registration_id'] = requestParameters['registrationId'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -513,6 +659,154 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminControllerExportReconciliationRuns without sending the request
+     */
+    async adminControllerExportReconciliationRunsRequestOpts(requestParameters: AdminControllerExportReconciliationRunsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['provider'] != null) {
+            queryParameters['provider'] = requestParameters['provider'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/admin/reconciliation-runs/export.csv`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Export reconciliation run summaries as CSV
+     */
+    async adminControllerExportReconciliationRunsRaw(requestParameters: AdminControllerExportReconciliationRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.adminControllerExportReconciliationRunsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Export reconciliation run summaries as CSV
+     */
+    async adminControllerExportReconciliationRuns(requestParameters: AdminControllerExportReconciliationRunsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.adminControllerExportReconciliationRunsRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for adminControllerExportRegistrationReport without sending the request
+     */
+    async adminControllerExportRegistrationReportRequestOpts(requestParameters: AdminControllerExportRegistrationReportRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['paymentStatus'] != null) {
+            queryParameters['payment_status'] = requestParameters['paymentStatus'];
+        }
+
+        if (requestParameters['tournamentId'] != null) {
+            queryParameters['tournament_id'] = requestParameters['tournamentId'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/admin/reports/registrations/export.csv`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Export platform registration report as CSV
+     */
+    async adminControllerExportRegistrationReportRaw(requestParameters: AdminControllerExportRegistrationReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.adminControllerExportRegistrationReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Export platform registration report as CSV
+     */
+    async adminControllerExportRegistrationReport(requestParameters: AdminControllerExportRegistrationReportRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.adminControllerExportRegistrationReportRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for adminControllerExportRegistrations without sending the request
      */
     async adminControllerExportRegistrationsRequestOpts(requestParameters: AdminControllerExportRegistrationsRequest): Promise<runtime.RequestOpts> {
@@ -540,6 +834,14 @@ export class AdminApi extends runtime.BaseAPI {
 
         if (requestParameters['tournamentId'] != null) {
             queryParameters['tournament_id'] = requestParameters['tournamentId'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -856,6 +1158,104 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminControllerGetOperationsStatus without sending the request
+     */
+    async adminControllerGetOperationsStatusRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/admin/operations/status`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get alert-ready platform operations status
+     */
+    async adminControllerGetOperationsStatusRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminOperationsStatusApiResponseDto>> {
+        const requestOptions = await this.adminControllerGetOperationsStatusRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminOperationsStatusApiResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Get alert-ready platform operations status
+     */
+    async adminControllerGetOperationsStatus(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminOperationsStatusApiResponseDto> {
+        const response = await this.adminControllerGetOperationsStatusRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminControllerGetReportSummary without sending the request
+     */
+    async adminControllerGetReportSummaryRequestOpts(requestParameters: AdminControllerGetReportSummaryRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearer", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/admin/reports/summary`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get platform-level support reporting summary
+     */
+    async adminControllerGetReportSummaryRaw(requestParameters: AdminControllerGetReportSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminPlatformReportSummaryApiResponseDto>> {
+        const requestOptions = await this.adminControllerGetReportSummaryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminPlatformReportSummaryApiResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Get platform-level support reporting summary
+     */
+    async adminControllerGetReportSummary(requestParameters: AdminControllerGetReportSummaryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminPlatformReportSummaryApiResponseDto> {
+        const response = await this.adminControllerGetReportSummaryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for adminControllerListAuditEvents without sending the request
      */
     async adminControllerListAuditEventsRequestOpts(requestParameters: AdminControllerListAuditEventsRequest): Promise<runtime.RequestOpts> {
@@ -1084,6 +1484,14 @@ export class AdminApi extends runtime.BaseAPI {
             queryParameters['registration_id'] = requestParameters['registrationId'];
         }
 
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         if (this.configuration && this.configuration.accessToken) {
@@ -1147,6 +1555,14 @@ export class AdminApi extends runtime.BaseAPI {
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -1216,6 +1632,14 @@ export class AdminApi extends runtime.BaseAPI {
 
         if (requestParameters['tournamentId'] != null) {
             queryParameters['tournament_id'] = requestParameters['tournamentId'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -1700,6 +2124,28 @@ export type AdminControllerExportOrganizersVerificationStatusEnum = typeof Admin
 /**
  * @export
  */
+export const AdminControllerExportPaymentReportProviderEnum = {
+    Manual: 'manual',
+    Mock: 'mock',
+    Razorpay: 'razorpay',
+    FutureProvider: 'future_provider'
+} as const;
+export type AdminControllerExportPaymentReportProviderEnum = typeof AdminControllerExportPaymentReportProviderEnum[keyof typeof AdminControllerExportPaymentReportProviderEnum];
+/**
+ * @export
+ */
+export const AdminControllerExportPaymentReportStatusEnum = {
+    NotRequired: 'not_required',
+    PendingOffline: 'pending_offline',
+    Paid: 'paid',
+    Failed: 'failed',
+    Refunded: 'refunded',
+    Waived: 'waived'
+} as const;
+export type AdminControllerExportPaymentReportStatusEnum = typeof AdminControllerExportPaymentReportStatusEnum[keyof typeof AdminControllerExportPaymentReportStatusEnum];
+/**
+ * @export
+ */
 export const AdminControllerExportPaymentsProviderEnum = {
     Manual: 'manual',
     Mock: 'mock',
@@ -1719,6 +2165,47 @@ export const AdminControllerExportPaymentsStatusEnum = {
     Waived: 'waived'
 } as const;
 export type AdminControllerExportPaymentsStatusEnum = typeof AdminControllerExportPaymentsStatusEnum[keyof typeof AdminControllerExportPaymentsStatusEnum];
+/**
+ * @export
+ */
+export const AdminControllerExportReconciliationRunsProviderEnum = {
+    Manual: 'manual',
+    Mock: 'mock',
+    Razorpay: 'razorpay',
+    FutureProvider: 'future_provider'
+} as const;
+export type AdminControllerExportReconciliationRunsProviderEnum = typeof AdminControllerExportReconciliationRunsProviderEnum[keyof typeof AdminControllerExportReconciliationRunsProviderEnum];
+/**
+ * @export
+ */
+export const AdminControllerExportReconciliationRunsStatusEnum = {
+    Started: 'started',
+    Completed: 'completed',
+    Failed: 'failed'
+} as const;
+export type AdminControllerExportReconciliationRunsStatusEnum = typeof AdminControllerExportReconciliationRunsStatusEnum[keyof typeof AdminControllerExportReconciliationRunsStatusEnum];
+/**
+ * @export
+ */
+export const AdminControllerExportRegistrationReportStatusEnum = {
+    Pending: 'pending',
+    Confirmed: 'confirmed',
+    Rejected: 'rejected',
+    Cancelled: 'cancelled'
+} as const;
+export type AdminControllerExportRegistrationReportStatusEnum = typeof AdminControllerExportRegistrationReportStatusEnum[keyof typeof AdminControllerExportRegistrationReportStatusEnum];
+/**
+ * @export
+ */
+export const AdminControllerExportRegistrationReportPaymentStatusEnum = {
+    NotRequired: 'not_required',
+    PendingOffline: 'pending_offline',
+    Paid: 'paid',
+    Failed: 'failed',
+    Refunded: 'refunded',
+    Waived: 'waived'
+} as const;
+export type AdminControllerExportRegistrationReportPaymentStatusEnum = typeof AdminControllerExportRegistrationReportPaymentStatusEnum[keyof typeof AdminControllerExportRegistrationReportPaymentStatusEnum];
 /**
  * @export
  */

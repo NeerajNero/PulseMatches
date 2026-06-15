@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nest
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RoleType } from "@prisma/client";
 import type { Response } from "express";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { sendCsvResponse } from "../../common/utils/csv.util";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -34,6 +35,7 @@ export class OrganizerFixturesController {
   }
 
   @Post("categories/:categoryId/fixtures/generate")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Generate a fixture set for one tournament category" })
   @ApiCreatedResponse({ type: FixtureSetApiResponseDto })
   generateFixtureSet(
@@ -68,6 +70,7 @@ export class OrganizerFixturesController {
   }
 
   @Get("fixtures/:fixtureSetId/results/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export fixture match results for one owned tournament fixture set as CSV" })
   async exportFixtureResults(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -131,6 +134,7 @@ export class OrganizerFixturesController {
   }
 
   @Patch("fixtures/:fixtureSetId/publish-results")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Publish one fixture set for public read-only fixtures and results" })
   @ApiOkResponse({ type: FixtureSetApiResponseDto })
   publishFixtureResults(
@@ -142,6 +146,7 @@ export class OrganizerFixturesController {
   }
 
   @Patch("fixtures/:fixtureSetId/unpublish-results")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Hide one fixture set from public fixtures and results" })
   @ApiOkResponse({ type: FixtureSetApiResponseDto })
   unpublishFixtureResults(
@@ -153,6 +158,7 @@ export class OrganizerFixturesController {
   }
 
   @Patch("fixtures/:fixtureSetId/archive")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Archive one fixture set" })
   @ApiOkResponse({ type: FixtureSetApiResponseDto })
   archiveFixtureSet(

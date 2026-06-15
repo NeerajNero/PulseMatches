@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
 import { AdminModule } from "./api/admin/admin.module";
 import { AuthModule } from "./api/auth/auth.module";
 import { DiscoveryModule } from "./api/discovery/discovery.module";
@@ -9,6 +10,7 @@ import { OrganizerRostersModule } from "./api/organizer-rosters/organizer-roster
 import { OrganizerTournamentsModule } from "./api/organizer-tournaments/organizer-tournaments.module";
 import { PaymentsModule } from "./api/payments/payments.module";
 import { RegistrationsModule } from "./api/registrations/registrations.module";
+import { RateLimitGuard } from "./common/rate-limit/rate-limit.guard";
 import { validateEnv } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -30,6 +32,12 @@ import { NotificationsModule } from "./notifications/notifications.module";
     RegistrationsModule,
     PaymentsModule,
     NotificationsModule
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard
+    }
   ]
 })
 export class AppModule {}
