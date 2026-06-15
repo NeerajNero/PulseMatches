@@ -108,13 +108,20 @@ export function TournamentCollectionView({
         <button className="primary-action filter-action" type="submit">Apply filters</button>
       </form>
 
-      {tournaments.isLoading ? <p className="state-text">Loading tournaments.</p> : null}
-      {tournaments.isError ? <p className="state-text">Unable to load tournaments. Check that the backend is running.</p> : null}
+      {tournaments.isLoading ? <p className="state-text compact-state listing-state">Loading tournaments.</p> : null}
+      {tournaments.isError ? <p className="state-text compact-state listing-state">Unable to load tournaments. Check that the backend is running.</p> : null}
       {!tournaments.isLoading && tournaments.data?.items.length === 0 ? (
-        <section className="empty-state">
+        <section className="empty-state listing-empty-state">
           <h2>No tournaments found</h2>
           <p>Try a different sport, city, date window, or search term.</p>
         </section>
+      ) : null}
+
+      {tournaments.data ? (
+        <div className="listing-summary-bar">
+          <span>Showing {tournaments.data.items.length} of {tournaments.data.pagination.total} published tournaments</span>
+          <span>Page {tournaments.data.pagination.page} of {Math.max(tournaments.data.pagination.totalPages, 1)}</span>
+        </div>
       ) : null}
 
       <section className="tournament-grid" aria-label="Tournament results">

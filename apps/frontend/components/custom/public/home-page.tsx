@@ -32,13 +32,31 @@ export function HomePageContent() {
           <span className="eyebrow">Sports tournament discovery</span>
           <h1>Find your next match day.</h1>
           <p>
-            Explore upcoming tournaments by sport and city, review event categories,
-            and follow the platform as organizer tools come online in planned phases.
+            Discover tournaments, register online, track fixtures, and follow published results across
+            active sports and cities.
           </p>
           <div className="hero-actions">
             <a className="primary-action" href={ROUTES.TOURNAMENTS}>Browse tournaments</a>
-            <a className="secondary-action" href="#organizers">Organizer tools</a>
+            <a className="secondary-action" href="#sports">Browse sports</a>
           </div>
+          <dl className="hero-highlight-grid" aria-label="Platform highlights">
+            <div>
+              <dt>Discover</dt>
+              <dd>Search published tournaments by sport, city, and schedule.</dd>
+            </div>
+            <div>
+              <dt>Register</dt>
+              <dd>Submit player registrations when entries are open.</dd>
+            </div>
+            <div>
+              <dt>Track</dt>
+              <dd>Follow fixtures and published results from the tournament page.</dd>
+            </div>
+            <div>
+              <dt>Read</dt>
+              <dd>See venue, categories, and current registration state at a glance.</dd>
+            </div>
+          </dl>
         </div>
         <aside className="score-panel discovery-panel" aria-label="Discovery highlights">
           <div className="score-panel-header">
@@ -63,6 +81,10 @@ export function HomePageContent() {
               <dd>Public</dd>
             </div>
           </dl>
+          <div className="score-panel-footer">
+            <span>Ready for players and organizers</span>
+            <span>{tournaments.data?.pagination.total ? "Published events" : "No events loaded yet"}</span>
+          </div>
         </aside>
       </section>
 
@@ -86,7 +108,7 @@ export function HomePageContent() {
         </div>
       </section>
 
-      <section className="content-band muted-band" aria-labelledby="sports-heading">
+      <section id="sports" className="content-band muted-band" aria-labelledby="sports-heading">
         <div className="section-heading">
           <h2 id="sports-heading">Browse by sport</h2>
           <p>Jump into active sport categories and see available public tournaments.</p>
@@ -121,16 +143,16 @@ export function HomePageContent() {
       <section id="organizers" className="content-band organizer-band">
         <div className="section-heading">
           <span className="eyebrow">For organizers</span>
-          <h2>Plan structured tournaments without spreadsheets taking over.</h2>
+          <h2>Built for tournament operators.</h2>
           <p>
-            Organizer creation, registration management, fixtures, and manual result entry
-            are planned for later phases. This phase keeps those flows clearly marked as upcoming.
+            The organizer workspace keeps drafts, registrations, fixtures, and results organized without
+            forcing the public experience to look like an admin tool.
           </p>
         </div>
         <div className="feature-grid">
           {organizerTools.map((tool) => (
             <article className="feature-tile" key={tool}>
-              <span>Planned</span>
+              <span>Organizer workflow</span>
               <h3>{tool}</h3>
             </article>
           ))}
@@ -141,4 +163,3 @@ export function HomePageContent() {
     </main>
   );
 }
-

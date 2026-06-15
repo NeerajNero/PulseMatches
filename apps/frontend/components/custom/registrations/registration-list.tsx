@@ -5,7 +5,8 @@ import { useState } from "react";
 import {
   formatDate,
   formatDateRange,
-  formatLabel
+  formatLabel,
+  getStatusTone
 } from "@/components/custom/tournaments/tournament-format";
 import {
   getApiErrorMessage,
@@ -157,6 +158,10 @@ export function RegistrationList({ registrations }: Readonly<{ registrations: Re
       {registrations.map((registration) => (
         <article className="registration-list-item" key={registration.id}>
           <div>
+            <div className="status-pill-row registration-badges">
+              <span className={`status-pill ${getStatusTone(registration.status)}`}>{formatLabel(registration.status)}</span>
+              <span className={`status-pill ${getStatusTone(registration.paymentStatus)}`}>{formatLabel(registration.paymentStatus)}</span>
+            </div>
             <span className="eyebrow">{registration.tournament.sport.name}</span>
             <h2>{registration.tournament.title}</h2>
             <p>

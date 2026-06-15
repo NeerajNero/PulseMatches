@@ -10,6 +10,7 @@ import {
   formatFee,
   formatLabel,
   getPrimaryMedia,
+  getStatusTone,
   getVenueSummary
 } from "@/components/custom/tournaments/tournament-format";
 import { usePublicTournamentFixtures, useTournamentDetail } from "@/hooks/use-discovery";
@@ -49,11 +50,15 @@ export function TournamentDetailView({ slug }: Readonly<{ slug: string }>) {
       <PublicHeader />
 
       <header className="detail-hero detail-hero-expanded">
-        <div>
+        <div className="detail-hero-copy">
           <a className="text-link" href={ROUTES.TOURNAMENTS}>Back to all tournaments</a>
           <span className="eyebrow">{detail.sport.name} in {detail.city.name}</span>
           <h1>{detail.title}</h1>
           <p>{detail.description ?? detail.shortDescription ?? "Tournament details are being prepared."}</p>
+          <div className="status-pill-row detail-hero-badges">
+            <span className={`status-pill ${getStatusTone(detail.status)}`}>{formatLabel(detail.status)}</span>
+            <span className={`status-pill ${getStatusTone(detail.registrationAvailability)}`}>{formatLabel(detail.registrationAvailability)}</span>
+          </div>
           <div className="hero-actions">
             <a className="primary-action" href="#registration">Register</a>
             <a className="secondary-action" href={`/sports/${detail.sport.slug}`}>More {detail.sport.name}</a>
@@ -77,6 +82,7 @@ export function TournamentDetailView({ slug }: Readonly<{ slug: string }>) {
         <article className="detail-panel">
           <h2>Schedule</h2>
           <dl className="detail-list">
+            <div><dt>Sport</dt><dd>{detail.sport.name}</dd></div>
             <div><dt>Date range</dt><dd>{formatDateRange(detail.startsAt, detail.endsAt)}</dd></div>
             <div><dt>Starts</dt><dd>{formatDateTime(detail.startsAt)}</dd></div>
             <div><dt>Ends</dt><dd>{formatDateTime(detail.endsAt)}</dd></div>
@@ -105,7 +111,7 @@ export function TournamentDetailView({ slug }: Readonly<{ slug: string }>) {
             <h2>Events and categories</h2>
             <p>Choose an available category in the registration panel when entries are open.</p>
           </div>
-          <span className="status-pill status-pill-ready">{formatLabel(detail.registrationAvailability)}</span>
+          <span className={`status-pill ${getStatusTone(detail.registrationAvailability)}`}>{formatLabel(detail.registrationAvailability)}</span>
         </div>
         <div className="category-grid">
           {detail.categories.map((category) => (
@@ -186,7 +192,7 @@ function PublicFixtureSetCard({ fixtureSet }: Readonly<{ fixtureSet: PublicFixtu
             {fixtureSet.matchCount} completed
           </p>
         </div>
-        <span className="status-pill status-pill-ready">Published</span>
+        <span className={`status-pill ${getStatusTone(fixtureSet.status)}`}>{formatLabel(fixtureSet.status)}</span>
       </div>
 
       {fixtureSet.standings.length > 0 ? <PublicStandings standings={fixtureSet.standings} /> : null}
@@ -220,7 +226,7 @@ function PublicMatchCard({ match }: Readonly<{ match: PublicFixtureMatchDto }>) 
           <p>{formatPublicWinner(match)}</p>
         </div>
         <div>
-          <span className={`status-pill ${match.status === "completed" ? "status-pill-ready" : "status-pill-planned"}`}>
+          <span className={`status-pill ${getStatusTone(match.status)}`}>
             {formatLabel(match.status)}
           </span>
           <p>{match.scheduledAt ? formatDateTime(match.scheduledAt) : "Schedule pending"}</p>

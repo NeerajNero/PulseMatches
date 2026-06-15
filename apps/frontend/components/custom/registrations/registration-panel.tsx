@@ -5,7 +5,8 @@ import type { RegistrationDto, TournamentCategoryDto, TournamentDetailDto } from
 import {
   formatDateRange,
   formatFee,
-  formatLabel
+  formatLabel,
+  getStatusTone
 } from "@/components/custom/tournaments/tournament-format";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { getApiErrorMessage, useCreateRegistration, useMyRegistrations } from "@/hooks/use-registrations";
@@ -96,12 +97,17 @@ export function RegistrationPanel({ tournament }: Readonly<{ tournament: Tournam
 
       {isSignedIn && isPlayer && activeRegistration ? (
         <div className="registration-card registration-success">
+          <div className="status-pill-row">
+            <span className={`status-pill ${getStatusTone(activeRegistration.status)}`}>{formatLabel(activeRegistration.status)}</span>
+            <span className={`status-pill ${getStatusTone(activeRegistration.paymentStatus)}`}>{formatLabel(activeRegistration.paymentStatus)}</span>
+          </div>
           <h3>Already registered</h3>
           <p>
             Your {formatLabel(activeRegistration.status).toLowerCase()} registration is on file
             {activeRegistration.category ? ` for ${activeRegistration.category.name}` : ""}.
           </p>
           <dl className="detail-list">
+            <div><dt>Sport</dt><dd>{tournament.sport.name}</dd></div>
             <div><dt>Payment</dt><dd>{formatActiveRegistrationPayment(activeRegistration)}</dd></div>
             <div><dt>Tournament dates</dt><dd>{formatDateRange(tournament.startsAt, tournament.endsAt)}</dd></div>
           </dl>
@@ -111,6 +117,21 @@ export function RegistrationPanel({ tournament }: Readonly<{ tournament: Tournam
 
       {isSignedIn && isPlayer && !activeRegistration ? (
         <form className="registration-card registration-form" onSubmit={onSubmit}>
+          <div className="registration-summary-grid">
+            <div>
+              <span>Sport</span>
+              <strong>{tournament.sport.name}</strong>
+            </div>
+            <div>
+              <span>Venue</span>
+              <strong>{tournament.venue?.name ?? tournament.city.name}</strong>
+            </div>
+            <div>
+              <span>Registration</span>
+              <strong>{formatLabel(tournament.registrationAvailability)}</strong>
+            </div>
+          </div>
+
           {tournament.categories.length > 0 ? (
             <label>
               <span>Event category</span>

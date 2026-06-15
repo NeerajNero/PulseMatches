@@ -4,6 +4,7 @@ import {
   formatFee,
   formatLabel,
   getPrimaryMedia,
+  getStatusTone,
   getVenueSummary
 } from "@/components/custom/tournaments/tournament-format";
 import { tournamentDetailRoute } from "@/utils/route";
@@ -11,6 +12,7 @@ import { tournamentDetailRoute } from "@/utils/route";
 export function TournamentCard({ tournament }: Readonly<{ tournament: TournamentListItemDto }>) {
   const media = getPrimaryMedia(tournament);
   const categoryPreview = tournament.categories.slice(0, 3);
+  const availabilityTone = getStatusTone(tournament.registrationAvailability);
 
   return (
     <article className="tournament-card">
@@ -26,15 +28,19 @@ export function TournamentCard({ tournament }: Readonly<{ tournament: Tournament
           {tournament.sport.name}
         </div>
       )}
-      <div className="tournament-card-meta">
-        <span>{tournament.sport.name}</span>
-        <span>{tournament.city.name}</span>
+      <div className="status-pill-row tournament-card-badges">
+        <span className={`status-pill ${getStatusTone(tournament.status)}`}>{formatLabel(tournament.status)}</span>
+        <span className={`status-pill ${availabilityTone}`}>{formatLabel(tournament.registrationAvailability)}</span>
       </div>
       <h2><a href={tournamentDetailRoute(tournament.slug)}>{tournament.title}</a></h2>
       <p>{tournament.shortDescription ?? "Tournament details are available on the event page."}</p>
-      <dl className="card-detail-list">
+      <dl className="card-detail-list tournament-card-details">
         <div>
-          <dt>Date</dt>
+          <dt>Sport</dt>
+          <dd>{tournament.sport.name}</dd>
+        </div>
+        <div>
+          <dt>Start date</dt>
           <dd>{formatDateRange(tournament.startsAt, tournament.endsAt)}</dd>
         </div>
         <div>
@@ -42,8 +48,8 @@ export function TournamentCard({ tournament }: Readonly<{ tournament: Tournament
           <dd>{getVenueSummary(tournament)}</dd>
         </div>
         <div>
-          <dt>Organizer</dt>
-          <dd>{tournament.organizer.organizationName}</dd>
+          <dt>Entry fee</dt>
+          <dd>{formatEntryFee(tournament.categories)}</dd>
         </div>
       </dl>
       {categoryPreview.length > 0 ? (
@@ -56,9 +62,20 @@ export function TournamentCard({ tournament }: Readonly<{ tournament: Tournament
         </div>
       ) : null}
       <div className="tournament-card-footer">
-        <span>{formatLabel(tournament.registrationAvailability)}</span>
+        <span>{tournament.city.name}</span>
         <a href={tournamentDetailRoute(tournament.slug)}>View details</a>
       </div>
     </article>
   );
+}
+
+function formatEntryFee(categories: TournamentListItemDto["categories"]) {
+  if (categories.length === 0) {
+    return "Not set";
+  }
+  if (categories.every((category) => category.entryFeeAmount === 0)) {
+    return "Free entry";
+  }
+  const firstPaidCategory = categories.find((category) => category.entryFeeAmount > 0);
+  return firstPaidCategory ? formatFee(firstPaidCategory) : "Free entry";
 }
