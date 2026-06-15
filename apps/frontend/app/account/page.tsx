@@ -14,9 +14,14 @@ export default function AccountPage() {
           <h1>Player account</h1>
           <p>Review your tournament registration activity.</p>
         </div>
-        <a className="secondary-action" href="/me">Profile</a>
+        <a className="secondary-action" href="/account/dashboard">Dashboard</a>
       </section>
       <section className="dashboard-grid">
+        <a className="feature-tile browse-tile" href="/account/dashboard">
+          <span>Dashboard</span>
+          <h2>Account overview</h2>
+          <p>See your registrations, payment status, and published fixtures in one place.</p>
+        </a>
         <a className="feature-tile browse-tile" href="/account/registrations">
           <span>Registrations</span>
           <h2>My tournament registrations</h2>

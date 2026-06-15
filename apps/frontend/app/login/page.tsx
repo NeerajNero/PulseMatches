@@ -1,12 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/custom/auth/auth-shell";
 import { useLogin } from "@/hooks/use-auth";
+import { getPostAuthRedirectPath } from "@/utils/auth-redirect";
 import { ROUTES } from "@/utils/route";
 
 export default function LoginPage() {
   const login = useLogin();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -18,8 +21,11 @@ export default function LoginPage() {
         email: String(form.get("email") ?? ""),
         password: String(form.get("password") ?? "")
       });
-      const roles = result?.user.roles ?? [];
-      window.location.assign(roles.includes("ORGANIZER") ? ROUTES.ORGANIZER : ROUTES.ME);
+      const searchParams = new URLSearchParams(window.location.search);
+      router.replace(getPostAuthRedirectPath({
+        roles: result?.user.roles ?? [],
+        searchParams
+      }));
     } catch {
       setError("Unable to log in with those credentials.");
     }
@@ -45,4 +51,3 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
-
