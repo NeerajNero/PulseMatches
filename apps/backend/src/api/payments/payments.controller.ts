@@ -2,6 +2,7 @@ import { Body, Controller, Get, Headers, Param, Post, RawBodyRequest, Req, UseGu
 import { ApiBearerAuth, ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RoleType } from "@prisma/client";
 import { Request } from "express";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -22,6 +23,7 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post("me/registrations/:registrationId/payment-intent")
+  @RateLimit({ bucket: "payment" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.PLAYER)
@@ -48,6 +50,7 @@ export class PaymentsController {
   }
 
   @Post("payments/mock/complete")
+  @RateLimit({ bucket: "payment" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.PLAYER)
@@ -61,6 +64,7 @@ export class PaymentsController {
   }
 
   @Post("me/registrations/:registrationId/payment/verify")
+  @RateLimit({ bucket: "payment" })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.PLAYER)
@@ -75,6 +79,7 @@ export class PaymentsController {
   }
 
   @Post("payments/webhooks/:provider")
+  @RateLimit({ bucket: "payment" })
   @ApiOperation({ summary: "Provider-neutral payment webhook endpoint" })
   @ApiHeader({ name: "x-razorpay-signature", required: false })
   @ApiHeader({ name: "x-razorpay-event-id", required: false })

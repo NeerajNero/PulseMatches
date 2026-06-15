@@ -36,6 +36,20 @@ export class AdminPaginationQueryDto {
   search?: string;
 }
 
+export class AdminDateRangeQueryDto {
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
+}
+
 export class AdminUsersQueryDto extends AdminPaginationQueryDto {
   @ApiPropertyOptional({ enum: ROLE_VALUES })
   @IsOptional()
@@ -77,6 +91,18 @@ export class AdminRegistrationsQueryDto extends AdminPaginationQueryDto {
   @IsOptional()
   @IsUUID()
   tournament_id?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
 }
 
 export class AdminPaymentsQueryDto extends AdminPaginationQueryDto {
@@ -99,6 +125,18 @@ export class AdminPaymentsQueryDto extends AdminPaginationQueryDto {
   @IsOptional()
   @IsUUID()
   registration_id?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
 }
 
 export class AdminNotificationsQueryDto extends AdminPaginationQueryDto {
@@ -129,6 +167,18 @@ export class AdminReconciliationRunsQueryDto extends AdminPaginationQueryDto {
   @IsOptional()
   @IsIn(RECONCILIATION_STATUS_VALUES)
   status?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-01" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  from?: string;
+
+  @ApiPropertyOptional({ example: "2026-06-30" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  to?: string;
 }
 
 export class AdminAuditEventsQueryDto extends AdminPaginationQueryDto {
@@ -256,6 +306,143 @@ export class AdminDashboardDto {
 
   @ApiPropertyOptional({ type: String, nullable: true })
   recent_reconciliation_started_at!: string | null;
+}
+
+export class AdminReportCountDto {
+  @ApiProperty()
+  key!: string;
+
+  @ApiProperty()
+  count!: number;
+}
+
+export class AdminPaymentProviderStatusReportDto {
+  @ApiProperty()
+  provider!: string;
+
+  @ApiProperty()
+  status!: string;
+
+  @ApiProperty()
+  count!: number;
+}
+
+export class AdminPlatformReportSummaryDto {
+  @ApiProperty({ type: [AdminReportCountDto] })
+  users_by_role!: AdminReportCountDto[];
+
+  @ApiProperty({ type: [AdminReportCountDto] })
+  organizers_by_verification_status!: AdminReportCountDto[];
+
+  @ApiProperty({ type: [AdminReportCountDto] })
+  tournaments_by_status!: AdminReportCountDto[];
+
+  @ApiProperty({ type: [AdminReportCountDto] })
+  registrations_by_status!: AdminReportCountDto[];
+
+  @ApiProperty({ type: [AdminPaymentProviderStatusReportDto] })
+  payments_by_provider_status!: AdminPaymentProviderStatusReportDto[];
+
+  @ApiProperty()
+  total_paid_amount!: number;
+
+  @ApiProperty()
+  total_refunded_amount!: number;
+
+  @ApiProperty({ type: [AdminReportCountDto] })
+  notifications_by_status!: AdminReportCountDto[];
+
+  @ApiProperty({ type: [AdminReportCountDto] })
+  reconciliation_by_status!: AdminReportCountDto[];
+}
+
+export class AdminOperationsDependencyDto {
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  status!: "ok" | "warning" | "critical";
+}
+
+export class AdminOperationsThresholdDto {
+  @ApiProperty()
+  stale_notification_minutes!: number;
+
+  @ApiProperty()
+  stale_payment_intent_minutes!: number;
+
+  @ApiProperty()
+  failed_notification_alert_threshold!: number;
+
+  @ApiProperty()
+  failed_payment_alert_threshold!: number;
+}
+
+export class AdminOperationsLatestReconciliationDto {
+  @ApiPropertyOptional({ type: String, nullable: true })
+  id!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  provider!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  status!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  started_at!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  completed_at!: string | null;
+}
+
+export class AdminOperationsStatusDto {
+  @ApiProperty()
+  status!: "ok" | "warning" | "critical";
+
+  @ApiProperty()
+  service_name!: string;
+
+  @ApiProperty()
+  app_version!: string;
+
+  @ApiProperty()
+  checked_at!: string;
+
+  @ApiProperty({ type: [AdminOperationsDependencyDto] })
+  dependencies!: AdminOperationsDependencyDto[];
+
+  @ApiProperty()
+  payment_provider!: string;
+
+  @ApiProperty()
+  notification_provider!: string;
+
+  @ApiProperty()
+  export_max_rows!: number;
+
+  @ApiProperty()
+  pending_notifications!: number;
+
+  @ApiProperty()
+  failed_notifications!: number;
+
+  @ApiProperty()
+  stale_processing_notifications!: number;
+
+  @ApiProperty()
+  stale_payment_intents!: number;
+
+  @ApiProperty()
+  failed_payment_intents!: number;
+
+  @ApiProperty()
+  failed_payment_events!: number;
+
+  @ApiProperty({ type: AdminOperationsLatestReconciliationDto })
+  latest_reconciliation_run!: AdminOperationsLatestReconciliationDto;
+
+  @ApiProperty({ type: AdminOperationsThresholdDto })
+  thresholds!: AdminOperationsThresholdDto;
 }
 
 export class AdminUserDto extends AdminUserSummaryDto {
@@ -654,6 +841,16 @@ export class AdminAuditEventDto {
 export class AdminDashboardApiResponseDto extends ApiResponseDto<AdminDashboardDto> {
   @ApiProperty({ type: AdminDashboardDto })
   declare data: AdminDashboardDto;
+}
+
+export class AdminPlatformReportSummaryApiResponseDto extends ApiResponseDto<AdminPlatformReportSummaryDto> {
+  @ApiProperty({ type: AdminPlatformReportSummaryDto })
+  declare data: AdminPlatformReportSummaryDto;
+}
+
+export class AdminOperationsStatusApiResponseDto extends ApiResponseDto<AdminOperationsStatusDto> {
+  @ApiProperty({ type: AdminOperationsStatusDto })
+  declare data: AdminOperationsStatusDto;
 }
 
 export class AdminUserListDto extends AdminListDto<AdminUserDto> {

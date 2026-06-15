@@ -46,6 +46,15 @@ export interface AppEnvironment {
   RAZORPAY_CHECKOUT_NAME: string;
   RAZORPAY_CHECKOUT_DESCRIPTION: string;
   EXPORT_MAX_ROWS: number;
+  OPS_STALE_NOTIFICATION_MINUTES: number;
+  OPS_STALE_PAYMENT_INTENT_MINUTES: number;
+  OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: number;
+  OPS_FAILED_PAYMENT_ALERT_THRESHOLD: number;
+  RATE_LIMIT_TTL_SECONDS: number;
+  RATE_LIMIT_MAX_REQUESTS: number;
+  AUTH_RATE_LIMIT_MAX_REQUESTS: number;
+  PAYMENT_RATE_LIMIT_MAX_REQUESTS: number;
+  EXPORT_RATE_LIMIT_MAX_REQUESTS: number;
 }
 
 const defaults: AppEnvironment = {
@@ -93,7 +102,16 @@ const defaults: AppEnvironment = {
   RAZORPAY_WEBHOOK_SECRET: "",
   RAZORPAY_CHECKOUT_NAME: "MatchFlow Arena",
   RAZORPAY_CHECKOUT_DESCRIPTION: "Tournament registration fee",
-  EXPORT_MAX_ROWS: 5000
+  EXPORT_MAX_ROWS: 5000,
+  OPS_STALE_NOTIFICATION_MINUTES: 30,
+  OPS_STALE_PAYMENT_INTENT_MINUTES: 60,
+  OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: 10,
+  OPS_FAILED_PAYMENT_ALERT_THRESHOLD: 5,
+  RATE_LIMIT_TTL_SECONDS: 60,
+  RATE_LIMIT_MAX_REQUESTS: 120,
+  AUTH_RATE_LIMIT_MAX_REQUESTS: 20,
+  PAYMENT_RATE_LIMIT_MAX_REQUESTS: 30,
+  EXPORT_RATE_LIMIT_MAX_REQUESTS: 20
 };
 
 function parsePort(value: string | undefined, fallback: number, name: string): number {
@@ -140,6 +158,89 @@ function requireValue(value: string, name: string): string {
     throw new Error(`${name} is required when NOTIFICATION_PROVIDER=smtp`);
   }
   return value;
+}
+
+function isWeakSecret(value: string, defaultValue: string): boolean {
+  const trimmed = value.trim();
+  return !trimmed
+    || trimmed === defaultValue
+    || trimmed.toLowerCase().includes("replace")
+    || trimmed.length < 32;
+}
+
+function isPlaceholderValue(value: string, defaultValue: string): boolean {
+  const trimmed = value.trim();
+  return !trimmed
+    || trimmed === defaultValue
+    || trimmed.toLowerCase().includes("replace_")
+    || trimmed.toLowerCase().includes("placeholder");
+}
+
+function isLocalDevDatabaseUrl(value: string): boolean {
+  return value.includes("matchflow_dev_password")
+    || value.includes("@localhost:55432/")
+    || value.includes("@127.0.0.1:55432/");
+}
+
+function isWildcardOrigin(value: string): boolean {
+  return value.split(",").map((origin) => origin.trim()).some((origin) => origin === "*" || origin === "");
+}
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname);
+  } catch {
+    return true;
+  }
+}
+
+function validateProductionConfig(config: AppEnvironment): void {
+  if (config.NODE_ENV !== "production") {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  if (isPlaceholderValue(config.DATABASE_URL, defaults.DATABASE_URL) || isLocalDevDatabaseUrl(config.DATABASE_URL)) {
+    errors.push("DATABASE_URL must be set to a non-placeholder production database URL");
+  }
+  if (isWeakSecret(config.JWT_ACCESS_TOKEN_SECRET, defaults.JWT_ACCESS_TOKEN_SECRET)) {
+    errors.push("JWT_ACCESS_TOKEN_SECRET must be set to a strong production value of at least 32 characters");
+  }
+  if (isWeakSecret(config.JWT_REFRESH_TOKEN_SECRET, defaults.JWT_REFRESH_TOKEN_SECRET)) {
+    errors.push("JWT_REFRESH_TOKEN_SECRET must be set to a strong production value of at least 32 characters");
+  }
+  if (isWildcardOrigin(config.CORS_ORIGINS) || config.CORS_ORIGINS === defaults.CORS_ORIGINS) {
+    errors.push("CORS_ORIGINS must list explicit production origins and must not use wildcard/default origins");
+  }
+  if (isPlaceholderValue(config.FE_APP_URL, defaults.FE_APP_URL) || isLocalhostUrl(config.FE_APP_URL)) {
+    errors.push("FE_APP_URL must be set to the production frontend URL");
+  }
+  if (!config.SERVICE_NAME.trim()) {
+    errors.push("SERVICE_NAME is required in production");
+  }
+  if (!config.APP_VERSION.trim()) {
+    errors.push("APP_VERSION is required in production");
+  }
+  if (config.NOTIFICATION_PROVIDER === "smtp" && config.SMTP_HOST === defaults.SMTP_HOST) {
+    errors.push("SMTP_HOST must be configured when NOTIFICATION_PROVIDER=smtp");
+  }
+  if (config.PAYMENT_PROVIDER === "razorpay") {
+    if (isPlaceholderValue(config.RAZORPAY_KEY_ID, defaults.RAZORPAY_KEY_ID)) {
+      errors.push("RAZORPAY_KEY_ID must be configured when PAYMENT_PROVIDER=razorpay");
+    }
+    if (isPlaceholderValue(config.RAZORPAY_KEY_SECRET, defaults.RAZORPAY_KEY_SECRET)) {
+      errors.push("RAZORPAY_KEY_SECRET must be configured when PAYMENT_PROVIDER=razorpay");
+    }
+    if (isPlaceholderValue(config.RAZORPAY_WEBHOOK_SECRET, defaults.RAZORPAY_WEBHOOK_SECRET)) {
+      errors.push("RAZORPAY_WEBHOOK_SECRET must be configured when PAYMENT_PROVIDER=razorpay");
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(errors.join("; "));
+  }
 }
 
 export function validateEnv(env: Environment): AppEnvironment {
@@ -200,7 +301,44 @@ export function validateEnv(env: Environment): AppEnvironment {
     RAZORPAY_WEBHOOK_SECRET: env.RAZORPAY_WEBHOOK_SECRET ?? defaults.RAZORPAY_WEBHOOK_SECRET,
     RAZORPAY_CHECKOUT_NAME: env.RAZORPAY_CHECKOUT_NAME ?? defaults.RAZORPAY_CHECKOUT_NAME,
     RAZORPAY_CHECKOUT_DESCRIPTION: env.RAZORPAY_CHECKOUT_DESCRIPTION ?? defaults.RAZORPAY_CHECKOUT_DESCRIPTION,
-    EXPORT_MAX_ROWS: parsePort(env.EXPORT_MAX_ROWS, defaults.EXPORT_MAX_ROWS, "EXPORT_MAX_ROWS")
+    EXPORT_MAX_ROWS: parsePort(env.EXPORT_MAX_ROWS, defaults.EXPORT_MAX_ROWS, "EXPORT_MAX_ROWS"),
+    OPS_STALE_NOTIFICATION_MINUTES: parsePort(
+      env.OPS_STALE_NOTIFICATION_MINUTES,
+      defaults.OPS_STALE_NOTIFICATION_MINUTES,
+      "OPS_STALE_NOTIFICATION_MINUTES"
+    ),
+    OPS_STALE_PAYMENT_INTENT_MINUTES: parsePort(
+      env.OPS_STALE_PAYMENT_INTENT_MINUTES,
+      defaults.OPS_STALE_PAYMENT_INTENT_MINUTES,
+      "OPS_STALE_PAYMENT_INTENT_MINUTES"
+    ),
+    OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: parsePort(
+      env.OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD,
+      defaults.OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD,
+      "OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD"
+    ),
+    OPS_FAILED_PAYMENT_ALERT_THRESHOLD: parsePort(
+      env.OPS_FAILED_PAYMENT_ALERT_THRESHOLD,
+      defaults.OPS_FAILED_PAYMENT_ALERT_THRESHOLD,
+      "OPS_FAILED_PAYMENT_ALERT_THRESHOLD"
+    ),
+    RATE_LIMIT_TTL_SECONDS: parsePort(env.RATE_LIMIT_TTL_SECONDS, defaults.RATE_LIMIT_TTL_SECONDS, "RATE_LIMIT_TTL_SECONDS"),
+    RATE_LIMIT_MAX_REQUESTS: parsePort(env.RATE_LIMIT_MAX_REQUESTS, defaults.RATE_LIMIT_MAX_REQUESTS, "RATE_LIMIT_MAX_REQUESTS"),
+    AUTH_RATE_LIMIT_MAX_REQUESTS: parsePort(
+      env.AUTH_RATE_LIMIT_MAX_REQUESTS,
+      defaults.AUTH_RATE_LIMIT_MAX_REQUESTS,
+      "AUTH_RATE_LIMIT_MAX_REQUESTS"
+    ),
+    PAYMENT_RATE_LIMIT_MAX_REQUESTS: parsePort(
+      env.PAYMENT_RATE_LIMIT_MAX_REQUESTS,
+      defaults.PAYMENT_RATE_LIMIT_MAX_REQUESTS,
+      "PAYMENT_RATE_LIMIT_MAX_REQUESTS"
+    ),
+    EXPORT_RATE_LIMIT_MAX_REQUESTS: parsePort(
+      env.EXPORT_RATE_LIMIT_MAX_REQUESTS,
+      defaults.EXPORT_RATE_LIMIT_MAX_REQUESTS,
+      "EXPORT_RATE_LIMIT_MAX_REQUESTS"
+    )
   };
 
   if (config.NOTIFICATION_PROVIDER === "smtp") {
@@ -218,6 +356,8 @@ export function validateEnv(env: Environment): AppEnvironment {
     config.RAZORPAY_KEY_SECRET = requirePaymentValue(config.RAZORPAY_KEY_SECRET, "RAZORPAY_KEY_SECRET");
     config.RAZORPAY_WEBHOOK_SECRET = requirePaymentValue(config.RAZORPAY_WEBHOOK_SECRET, "RAZORPAY_WEBHOOK_SECRET");
   }
+
+  validateProductionConfig(config);
 
   return config;
 }

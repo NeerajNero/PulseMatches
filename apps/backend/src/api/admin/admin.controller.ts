@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query, Res, UseGuards } from "@nes
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RoleType } from "@prisma/client";
 import type { Response } from "express";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { sendCsvResponse } from "../../common/utils/csv.util";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -13,9 +14,11 @@ import {
   AdminAuditEventsApiResponseDto,
   AdminAuditEventsQueryDto,
   AdminDashboardApiResponseDto,
+  AdminDateRangeQueryDto,
   AdminNotificationsApiResponseDto,
   AdminNotificationsQueryDto,
   AdminNotificationApiResponseDto,
+  AdminOperationsStatusApiResponseDto,
   AdminOrganizerApiResponseDto,
   AdminOrganizerDetailApiResponseDto,
   AdminOrganizersApiResponseDto,
@@ -23,6 +26,7 @@ import {
   AdminPaymentDetailApiResponseDto,
   AdminPaymentsApiResponseDto,
   AdminPaymentsQueryDto,
+  AdminPlatformReportSummaryApiResponseDto,
   AdminReconciliationRunsApiResponseDto,
   AdminReconciliationRunsQueryDto,
   AdminRegistrationsApiResponseDto,
@@ -50,6 +54,20 @@ export class AdminController {
     return this.adminService.getDashboard();
   }
 
+  @Get("reports/summary")
+  @ApiOperation({ summary: "Get platform-level support reporting summary" })
+  @ApiOkResponse({ type: AdminPlatformReportSummaryApiResponseDto })
+  getReportSummary(@Query() query: AdminDateRangeQueryDto) {
+    return this.adminService.getReportSummary(query);
+  }
+
+  @Get("operations/status")
+  @ApiOperation({ summary: "Get alert-ready platform operations status" })
+  @ApiOkResponse({ type: AdminOperationsStatusApiResponseDto })
+  getOperationsStatus() {
+    return this.adminService.getOperationsStatus();
+  }
+
   @Get("users")
   @ApiOperation({ summary: "List platform users for support inspection" })
   @ApiOkResponse({ type: AdminUsersApiResponseDto })
@@ -58,6 +76,7 @@ export class AdminController {
   }
 
   @Get("users/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe platform users list as CSV" })
   async exportUsers(
     @Query() query: AdminUsersQueryDto,
@@ -76,6 +95,7 @@ export class AdminController {
   }
 
   @Get("organizers/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe organizer verification list as CSV" })
   async exportOrganizers(
     @Query() query: AdminOrganizersQueryDto,
@@ -94,6 +114,7 @@ export class AdminController {
   }
 
   @Patch("organizers/:organizerId/verify")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Verify an organizer profile with audit trail" })
   @ApiOkResponse({ type: AdminOrganizerApiResponseDto })
   verifyOrganizer(
@@ -104,6 +125,7 @@ export class AdminController {
   }
 
   @Patch("organizers/:organizerId/reject")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Reject an organizer verification request with audit trail" })
   @ApiOkResponse({ type: AdminOrganizerApiResponseDto })
   rejectOrganizer(
@@ -115,6 +137,7 @@ export class AdminController {
   }
 
   @Patch("organizers/:organizerId/reset-verification")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Reset organizer verification to pending with audit trail" })
   @ApiOkResponse({ type: AdminOrganizerApiResponseDto })
   resetOrganizerVerification(
@@ -132,6 +155,7 @@ export class AdminController {
   }
 
   @Get("tournaments/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe tournament overview as CSV" })
   async exportTournaments(
     @Query() query: AdminTournamentsQueryDto,
@@ -150,6 +174,7 @@ export class AdminController {
   }
 
   @Get("registrations/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe registration overview as CSV" })
   async exportRegistrations(
     @Query() query: AdminRegistrationsQueryDto,
@@ -157,6 +182,18 @@ export class AdminController {
     @Res() response: Response
   ) {
     const exportFile = await this.adminService.exportRegistrations(query, currentUser);
+    return sendCsvResponse(response, exportFile);
+  }
+
+  @Get("reports/registrations/export.csv")
+  @RateLimit({ bucket: "export" })
+  @ApiOperation({ summary: "Export platform registration report as CSV" })
+  async exportRegistrationReport(
+    @Query() query: AdminRegistrationsQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Res() response: Response
+  ) {
+    const exportFile = await this.adminService.exportRegistrationReport(query, currentUser);
     return sendCsvResponse(response, exportFile);
   }
 
@@ -168,6 +205,7 @@ export class AdminController {
   }
 
   @Get("payments/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe payment overview as CSV" })
   async exportPayments(
     @Query() query: AdminPaymentsQueryDto,
@@ -175,6 +213,18 @@ export class AdminController {
     @Res() response: Response
   ) {
     const exportFile = await this.adminService.exportPayments(query, currentUser);
+    return sendCsvResponse(response, exportFile);
+  }
+
+  @Get("reports/payments/export.csv")
+  @RateLimit({ bucket: "export" })
+  @ApiOperation({ summary: "Export platform payment report as CSV" })
+  async exportPaymentReport(
+    @Query() query: AdminPaymentsQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Res() response: Response
+  ) {
+    const exportFile = await this.adminService.exportPaymentReport(query, currentUser);
     return sendCsvResponse(response, exportFile);
   }
 
@@ -193,6 +243,7 @@ export class AdminController {
   }
 
   @Get("notifications/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export safe notification outbox summary as CSV" })
   async exportNotifications(
     @Query() query: AdminNotificationsQueryDto,
@@ -204,6 +255,7 @@ export class AdminController {
   }
 
   @Patch("notifications/:notificationId/retry")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Return a failed or skipped notification to pending for processor retry" })
   @ApiOkResponse({ type: AdminNotificationApiResponseDto })
   retryNotification(
@@ -214,6 +266,7 @@ export class AdminController {
   }
 
   @Patch("notifications/:notificationId/skip")
+  @RateLimit({ bucket: "admin_action" })
   @ApiOperation({ summary: "Mark a pending or failed notification as skipped with audit trail" })
   @ApiOkResponse({ type: AdminNotificationApiResponseDto })
   skipNotification(
@@ -231,6 +284,18 @@ export class AdminController {
     return this.adminService.listReconciliationRuns(query);
   }
 
+  @Get("reconciliation-runs/export.csv")
+  @RateLimit({ bucket: "export" })
+  @ApiOperation({ summary: "Export reconciliation run summaries as CSV" })
+  async exportReconciliationRuns(
+    @Query() query: AdminReconciliationRunsQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Res() response: Response
+  ) {
+    const exportFile = await this.adminService.exportReconciliationRuns(query, currentUser);
+    return sendCsvResponse(response, exportFile);
+  }
+
   @Get("audit-events")
   @ApiOperation({ summary: "List sanitized audit events for support inspection" })
   @ApiOkResponse({ type: AdminAuditEventsApiResponseDto })
@@ -239,6 +304,7 @@ export class AdminController {
   }
 
   @Get("audit-events/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export sanitized audit event summary as CSV" })
   async exportAuditEvents(
     @Query() query: AdminAuditEventsQueryDto,

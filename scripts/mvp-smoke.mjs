@@ -126,6 +126,11 @@ async function signupOrganizer(label) {
 async function main() {
   const health = await request("/health");
   assert(health.response.status === 200, "Health endpoint did not respond.");
+  assert(payload(health).status === "ok", "Health endpoint did not return ok.");
+  const readiness = payload(await request("/health/ready"));
+  assert(readiness.status === "ok", "Readiness endpoint did not return ok.");
+  assert(readiness.dependencies.some((dependency) => dependency.name === "database"), "Readiness did not include database status.");
+  assert(readiness.dependencies.some((dependency) => dependency.name === "redis"), "Readiness did not include redis status.");
 
   const publicTournaments = payload(await request("/tournaments?limit=20"));
   const listedTournaments = publicTournaments.items ?? [];
@@ -170,6 +175,24 @@ async function main() {
   assert(organizerAdmin.response.status === 403, `Organizer admin access expected 403, got ${organizerAdmin.response.status}.`);
   const adminDashboard = payload(await request("/admin/dashboard", { token: adminToken }));
   assert(adminDashboard.total_users >= 3, "Admin dashboard did not return platform user counts.");
+  const adminOperations = payload(await request("/admin/operations/status", { token: adminToken }));
+  assert(["ok", "warning", "critical"].includes(adminOperations.status), "Admin operations status returned invalid state.");
+  assert(adminOperations.dependencies.some((dependency) => dependency.name === "database"), "Admin operations did not include database status.");
+  assert(adminOperations.dependencies.some((dependency) => dependency.name === "redis"), "Admin operations did not include redis status.");
+  const adminOperationsPayload = JSON.stringify(adminOperations);
+  for (const marker of ["secret", "password", "token", "key_secret", "webhook_secret", "database_url", "smtp_pass", "razorpay_key_secret"]) {
+    assert(!adminOperationsPayload.toLowerCase().includes(marker), `Admin operations payload leaked forbidden marker: ${marker}.`);
+  }
+  const playerAdminOperations = await request("/admin/operations/status", {
+    token: seedPlayerToken,
+    allowFailure: true
+  });
+  assert(playerAdminOperations.response.status === 403, "Player accessed admin operations status.");
+  const organizerAdminOperations = await request("/admin/operations/status", {
+    token: organizerToken,
+    allowFailure: true
+  });
+  assert(organizerAdminOperations.response.status === 403, "Organizer accessed admin operations status.");
   const adminUsers = payload(await request("/admin/users?limit=5", { token: adminToken }));
   const adminUsersPayload = JSON.stringify(adminUsers).toLowerCase();
   assert(!adminUsersPayload.includes("password_hash"), "Admin users list leaked password hash field.");
@@ -187,6 +210,18 @@ async function main() {
     token: adminToken
   }));
   assert(adminExportAudit.items.length > 0, "Admin users export audit event was not recorded.");
+  const adminSummary = payload(await request("/admin/reports/summary", { token: adminToken }));
+  assert(Array.isArray(adminSummary.users_by_role), "Admin report summary did not include users_by_role.");
+  const playerAdminSummary = await request("/admin/reports/summary", {
+    token: seedPlayerToken,
+    allowFailure: true
+  });
+  assert(playerAdminSummary.response.status === 403, "Player accessed admin report summary.");
+  const invalidAdminRange = await request("/admin/reports/summary?from=not-a-date", {
+    token: adminToken,
+    allowFailure: true
+  });
+  assert(invalidAdminRange.response.status === 400, "Invalid admin report date range was not rejected.");
   log("read-only admin authorization and user privacy checks passed");
 
   const organizerTournaments = payload(await request("/organizer/tournaments?status=published&limit=12", {
@@ -515,17 +550,44 @@ async function main() {
   assertCsvExport(adminPaymentsExport, "paymentRecordId");
   assert(adminPaymentsExport.text.includes(paymentRegistration.id), "Admin payments CSV did not include smoke registration.");
   assertNoForbiddenExportMarkers(adminPaymentsExport.text, "Admin payments");
+  const adminPaymentReportExport = await request(`/admin/reports/payments/export.csv?registration_id=${paymentRegistration.id}`, {
+    token: adminToken
+  });
+  assertCsvExport(adminPaymentReportExport, "paymentRecordId");
+  assertNoForbiddenExportMarkers(adminPaymentReportExport.text, "Admin payment report");
   const organizerPaymentExport = await request(`/organizer/tournaments/${openSinglesDetail.id}/payments/export.csv?search=${encodeURIComponent(`SMOKE-${runId}`)}`, {
     token: registrationTournamentOrganizerToken
   });
   assertCsvExport(organizerPaymentExport, "registrationId");
   assertNoForbiddenExportMarkers(organizerPaymentExport.text, "Organizer payments");
   assert(!organizerPaymentExport.text.toLowerCase().includes("internal smoke payment note"), "Organizer payment export leaked internal notes.");
+  const organizerReportSummary = payload(await request(`/organizer/tournaments/${openSinglesDetail.id}/reports/summary`, {
+    token: registrationTournamentOrganizerToken
+  }));
+  assert(Array.isArray(organizerReportSummary.registrations_by_status), "Organizer report summary did not include registration counts.");
+  const playerOrganizerSummary = await request(`/organizer/tournaments/${openSinglesDetail.id}/reports/summary`, {
+    token: paymentPlayer.token,
+    allowFailure: true
+  });
+  assert(playerOrganizerSummary.response.status === 403, "Player accessed organizer report summary.");
+  const invalidOrganizerRange = await request(`/organizer/tournaments/${openSinglesDetail.id}/reports/summary?to=bad-date`, {
+    token: registrationTournamentOrganizerToken,
+    allowFailure: true
+  });
+  assert(invalidOrganizerRange.response.status === 400, "Invalid organizer report date range was not rejected.");
+  const organizerPaymentReportExport = await request(`/organizer/tournaments/${openSinglesDetail.id}/reports/payments/export.csv?search=${encodeURIComponent(`SMOKE-${runId}`)}`, {
+    token: registrationTournamentOrganizerToken
+  });
+  assertCsvExport(organizerPaymentReportExport, "registrationId");
+  assertNoForbiddenExportMarkers(organizerPaymentReportExport.text, "Organizer payment report");
   const organizerRegistrationExport = await request(`/organizer/tournaments/${openSinglesDetail.id}/registrations/export.csv?category_id=${openSinglesCategory.id}`, {
     token: registrationTournamentOrganizerToken
   });
   assertCsvExport(organizerRegistrationExport, "registrationId");
   assertNoForbiddenExportMarkers(organizerRegistrationExport.text, "Organizer registrations");
+  const adminReconciliationExport = await request("/admin/reconciliation-runs/export.csv", { token: adminToken });
+  assertCsvExport(adminReconciliationExport, "checkedCount");
+  assertNoForbiddenExportMarkers(adminReconciliationExport.text, "Admin reconciliation runs");
   const otherOrganizerExport = await request(`/organizer/tournaments/${openSinglesDetail.id}/registrations/export.csv`, {
     token: organizerToken,
     allowFailure: true

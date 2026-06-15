@@ -18,6 +18,11 @@ import {
     HealthApiResponseDtoFromJSON,
     HealthApiResponseDtoToJSON,
 } from '../models/HealthApiResponseDto';
+import {
+    type HealthReadyApiResponseDto,
+    HealthReadyApiResponseDtoFromJSON,
+    HealthReadyApiResponseDtoToJSON,
+} from '../models/HealthReadyApiResponseDto';
 
 /**
  * 
@@ -58,6 +63,43 @@ export class HealthApi extends runtime.BaseAPI {
      */
     async healthControllerGetHealth(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HealthApiResponseDto> {
         const response = await this.healthControllerGetHealthRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for healthControllerGetReady without sending the request
+     */
+    async healthControllerGetReadyRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/health/ready`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Check API readiness dependencies
+     */
+    async healthControllerGetReadyRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HealthReadyApiResponseDto>> {
+        const requestOptions = await this.healthControllerGetReadyRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HealthReadyApiResponseDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Check API readiness dependencies
+     */
+    async healthControllerGetReady(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HealthReadyApiResponseDto> {
+        const response = await this.healthControllerGetReadyRaw(initOverrides);
         return await response.value();
     }
 

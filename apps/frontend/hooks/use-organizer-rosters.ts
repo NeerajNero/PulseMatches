@@ -16,13 +16,40 @@ import type {
   UpdateTeamRequestDto
 } from "@matchflow/client-sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/apis/api";
+import { apiClient, getApiBaseUrl } from "@/lib/apis/api";
+import { getAccessToken } from "@/lib/auth-token-store";
 import { ORGANIZER_TOURNAMENT_QUERY_KEYS, REGISTRATION_QUERY_KEYS } from "@/utils/query-constants";
 
 export interface OrganizerRosterFilters<TStatus extends string = string> {
   categoryId?: string;
+  from?: string;
   search?: string;
   status?: TStatus | "";
+  to?: string;
+}
+
+export interface OrganizerReportSummary {
+  registrationsByStatus: Array<{ status: string; count: number }>;
+  paymentsByStatus: Array<{ status: string; count: number }>;
+  totalCollectedAmount: number;
+  totalRefundedAmount: number;
+  participantCount: number;
+  teamCount: number;
+  fixtureCount: number;
+  completedMatchCount: number;
+  pendingNotificationCount: number;
+}
+
+interface OrganizerReportSummaryApi {
+  registrations_by_status: Array<{ status: string; count: number }>;
+  payments_by_status: Array<{ status: string; count: number }>;
+  total_collected_amount: number;
+  total_refunded_amount: number;
+  participant_count: number;
+  team_count: number;
+  fixture_count: number;
+  completed_match_count: number;
+  pending_notification_count: number;
 }
 
 function rosterInvalidations(id: string) {
@@ -46,6 +73,36 @@ export function useOrganizerRosterSummary(id: string, enabled = true) {
   });
 }
 
+export function useOrganizerReportSummary(
+  id: string,
+  filters: Pick<OrganizerRosterFilters, "from" | "to">,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ORGANIZER_TOURNAMENT_QUERY_KEYS.REPORT_SUMMARY(id, filters),
+    queryFn: async () => {
+      const summary = await getAuthenticatedJson<OrganizerReportSummaryApi>(`/organizer/tournaments/${id}/reports/summary`, filters);
+      return toOrganizerReportSummary(summary);
+    },
+    enabled: enabled && Boolean(id),
+    retry: false
+  });
+}
+
+function toOrganizerReportSummary(summary: OrganizerReportSummaryApi): OrganizerReportSummary {
+  return {
+    registrationsByStatus: summary.registrations_by_status,
+    paymentsByStatus: summary.payments_by_status,
+    totalCollectedAmount: summary.total_collected_amount,
+    totalRefundedAmount: summary.total_refunded_amount,
+    participantCount: summary.participant_count,
+    teamCount: summary.team_count,
+    fixtureCount: summary.fixture_count,
+    completedMatchCount: summary.completed_match_count,
+    pendingNotificationCount: summary.pending_notification_count
+  };
+}
+
 export function useOrganizerRegistrations(
   id: string,
   filters: OrganizerRosterFilters<OrganizerRostersControllerFindRegistrationsStatusEnum>,
@@ -57,9 +114,11 @@ export function useOrganizerRegistrations(
       const response = await apiClient.organizerRosters.organizerRostersControllerFindRegistrations({
         id,
         categoryId: filters.categoryId || undefined,
+        from: filters.from || undefined,
         search: filters.search || undefined,
-        status: filters.status || undefined
-      });
+        status: filters.status || undefined,
+        to: filters.to || undefined
+      } as unknown as Parameters<typeof apiClient.organizerRosters.organizerRostersControllerFindRegistrations>[0]);
       return response.data ?? [];
     },
     enabled: enabled && Boolean(id),
@@ -78,9 +137,11 @@ export function useOrganizerPayments(
       const response = await apiClient.organizerRosters.organizerRostersControllerFindPayments({
         id,
         categoryId: filters.categoryId || undefined,
+        from: filters.from || undefined,
         search: filters.search || undefined,
-        status: filters.status || undefined
-      });
+        status: filters.status || undefined,
+        to: filters.to || undefined
+      } as unknown as Parameters<typeof apiClient.organizerRosters.organizerRostersControllerFindPayments>[0]);
       return response.data ?? [];
     },
     enabled: enabled && Boolean(id),
@@ -437,4 +498,27 @@ export function useDeleteTeamMember(id: string, teamId: string) {
       ]);
     }
   });
+}
+
+async function getAuthenticatedJson<TData>(path: string, params: { from?: string; to?: string }) {
+  const url = new URL(path, getApiBaseUrl());
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  });
+
+  const response = await fetch(url.toString(), {
+    credentials: "include",
+    headers: {
+      Authorization: `Bearer ${getAccessToken() ?? ""}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  const body = await response.json() as { data: TData };
+  return body.data;
 }

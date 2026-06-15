@@ -21,6 +21,7 @@ import {
   TournamentCategoryStatus
 } from "@prisma/client";
 import { createCsv, type CsvRow } from "../../common/utils/csv.util";
+import { parseDateRange, toCreatedAtRange } from "../../common/utils/date-range.util";
 import { OrganizerRostersDbService } from "../../db/organizer-rosters/organizer-rosters-db.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { AuthenticatedUser } from "../auth/auth.types";
@@ -31,6 +32,7 @@ import {
   CreateTeamRequestDto,
   OrganizerParticipantListQueryDto,
   OrganizerPaymentListQueryDto,
+  OrganizerReportDateRangeQueryDto,
   OrganizerRegistrationListQueryDto,
   OrganizerRosterListQueryDto,
   OrganizerTeamListQueryDto,
@@ -69,6 +71,34 @@ export class OrganizerRostersService {
     };
   }
 
+  async getReportSummary(currentUser: AuthenticatedUser, tournamentId: string, query: OrganizerReportDateRangeQueryDto) {
+    const profile = await this.requireOrganizerProfile(currentUser.id);
+    await this.requireOwnedTournament(tournamentId, profile.id);
+    const dateRange = parseDateRange(query);
+    const summary = await this.organizerRostersDb.getTournamentReportSummary({
+      tournamentId,
+      createdAt: toCreatedAtRange(dateRange)
+    });
+
+    return {
+      registrations_by_status: summary.registrationsByStatus.map((item) => ({
+        status: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      payments_by_status: summary.paymentsByStatus.map((item) => ({
+        status: this.toApiEnum(item.status),
+        count: item._count._all
+      })),
+      total_collected_amount: summary.totalCollectedAmount,
+      total_refunded_amount: summary.totalRefundedAmount,
+      participant_count: summary.participantCount,
+      team_count: summary.teamCount,
+      fixture_count: summary.fixtureCount,
+      completed_match_count: summary.completedMatchCount,
+      pending_notification_count: summary.pendingNotificationCount
+    };
+  }
+
   async findRegistrations(currentUser: AuthenticatedUser, tournamentId: string, query: OrganizerRegistrationListQueryDto) {
     const profile = await this.requireOrganizerProfile(currentUser.id);
     await this.requireOwnedTournament(tournamentId, profile.id);
@@ -104,6 +134,46 @@ export class OrganizerRostersService {
 
     await this.auditExport(currentUser.id, tournamentId, "organizer.export_registrations", query, rows.length);
     return this.toCsvExport("registrations", tournamentId, [
+      "registrationId",
+      "playerName",
+      "playerEmail",
+      "category",
+      "registrationStatus",
+      "paymentStatus",
+      "amount",
+      "currency",
+      "createdAt"
+    ], rows);
+  }
+
+  async exportRegistrationReport(
+    currentUser: AuthenticatedUser,
+    tournamentId: string,
+    query: OrganizerRegistrationListQueryDto
+  ) {
+    const profile = await this.requireOrganizerProfile(currentUser.id);
+    await this.requireOwnedTournament(tournamentId, profile.id);
+    if (query.category_id) {
+      await this.requireOwnedCategory(query.category_id, tournamentId);
+    }
+
+    const limit = this.getExportLimit();
+    const registrations = await this.organizerRostersDb.findRegistrations(this.buildRegistrationWhere(tournamentId, query), limit + 1);
+    this.assertExportLimit(registrations.length, limit);
+    const rows = registrations.map((registration) => ({
+      registrationId: registration.id,
+      playerName: registration.playerName,
+      playerEmail: registration.user.email,
+      category: registration.tournamentCategory?.name ?? "Tournament-level",
+      registrationStatus: this.toApiEnum(registration.status),
+      paymentStatus: this.toApiEnum(registration.paymentRecord?.status ?? registration.paymentStatus),
+      amount: registration.paymentRecord?.amount ?? registration.feeAmount,
+      currency: registration.paymentRecord?.currency ?? registration.feeCurrency,
+      createdAt: registration.createdAt.toISOString()
+    } satisfies CsvRow));
+
+    await this.auditExport(currentUser.id, tournamentId, "organizer.export_registration_report", query, rows.length);
+    return this.toCsvExport("registration-report", tournamentId, [
       "registrationId",
       "playerName",
       "playerEmail",
@@ -170,6 +240,54 @@ export class OrganizerRostersService {
       "currency",
       "paidAt",
       "refundStatus"
+    ], rows);
+  }
+
+  async exportPaymentReport(currentUser: AuthenticatedUser, tournamentId: string, query: OrganizerPaymentListQueryDto) {
+    const profile = await this.requireOrganizerProfile(currentUser.id);
+    await this.requireOwnedTournament(tournamentId, profile.id);
+    if (query.category_id) {
+      await this.requireOwnedCategory(query.category_id, tournamentId);
+    }
+
+    const limit = this.getExportLimit();
+    const payments = await this.organizerRostersDb.findPayments(this.buildPaymentWhere(tournamentId, query), limit + 1);
+    this.assertExportLimit(payments.length, limit);
+    const rows = payments.map((registration) => {
+      const paymentRecord = registration.paymentRecord;
+      const successfulRefund = paymentRecord?.paymentRefunds.find((refund) => (
+        refund.status === PaymentRefundStatus.MANUAL_RECORDED || refund.status === PaymentRefundStatus.SUCCEEDED
+      ));
+      return {
+        registrationId: registration.id,
+        playerName: registration.playerName,
+        playerEmail: registration.user.email,
+        category: registration.tournamentCategory?.name ?? "Tournament-level",
+        provider: paymentRecord ? this.toApiEnum(paymentRecord.provider) : "manual",
+        mode: this.toApiEnum(paymentRecord?.mode ?? registration.paymentMode),
+        paymentStatus: this.toApiEnum(paymentRecord?.status ?? registration.paymentStatus),
+        amount: paymentRecord?.amount ?? registration.feeAmount,
+        currency: paymentRecord?.currency ?? registration.feeCurrency,
+        paidAt: paymentRecord?.paidAt?.toISOString() ?? "",
+        refundStatus: successfulRefund ? this.toApiEnum(successfulRefund.status) : "",
+        createdAt: paymentRecord?.createdAt.toISOString() ?? registration.createdAt.toISOString()
+      } satisfies CsvRow;
+    });
+
+    await this.auditExport(currentUser.id, tournamentId, "organizer.export_payment_report", query, rows.length);
+    return this.toCsvExport("payment-report", tournamentId, [
+      "registrationId",
+      "playerName",
+      "playerEmail",
+      "category",
+      "provider",
+      "mode",
+      "paymentStatus",
+      "amount",
+      "currency",
+      "paidAt",
+      "refundStatus",
+      "createdAt"
     ], rows);
   }
 
@@ -835,6 +953,10 @@ export class OrganizerRostersService {
 
   private buildRegistrationWhere(tournamentId: string, query: OrganizerRegistrationListQueryDto): Prisma.RegistrationWhereInput {
     const where: Prisma.RegistrationWhereInput = { tournamentId };
+    const createdAt = toCreatedAtRange(parseDateRange(query));
+    if (createdAt) {
+      where.createdAt = createdAt;
+    }
     if (query.category_id) {
       where.tournamentCategoryId = query.category_id;
     }
@@ -855,6 +977,10 @@ export class OrganizerRostersService {
 
   private buildPaymentWhere(tournamentId: string, query: OrganizerPaymentListQueryDto): Prisma.RegistrationWhereInput {
     const where: Prisma.RegistrationWhereInput = { tournamentId };
+    const createdAt = toCreatedAtRange(parseDateRange(query));
+    if (createdAt) {
+      where.paymentRecord = { createdAt };
+    }
     if (query.category_id) {
       where.tournamentCategoryId = query.category_id;
     }

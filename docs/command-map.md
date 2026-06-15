@@ -16,6 +16,7 @@ pnpm docker:logs
 pnpm docker:migrate
 pnpm docker:seed
 pnpm docker:smoke
+pnpm docker:smoke:full
 pnpm docker:notifications:process
 pnpm docker:payments:reconcile
 pnpm docker:backend:shell
@@ -29,10 +30,12 @@ pnpm backend:dev
 pnpm frontend:dev
 pnpm generate:openapi
 pnpm generate:sdk
+pnpm config:check
 pnpm smoke:mvp
 pnpm notifications:process
 pnpm notifications:test-email
 pnpm payments:reconcile
+pnpm audit:deps
 pnpm verify:mvp
 ```
 
@@ -71,6 +74,7 @@ pnpm --filter @matchflow/backend prisma:migrate
 pnpm --filter @matchflow/backend prisma:deploy
 pnpm --filter @matchflow/backend prisma:studio
 pnpm --filter @matchflow/backend db:seed
+pnpm --filter @matchflow/backend config:check
 pnpm --filter @matchflow/backend payments:reconcile
 ```
 
@@ -115,6 +119,14 @@ pnpm smoke:mvp
 
 The smoke creates isolated timestamped data through application APIs only. It does not run migrations, reset data, or edit the database directly.
 
+Phase 12A smoke coverage also checks:
+
+- `GET /health`
+- `GET /health/ready`
+- ADMIN-only `GET /admin/operations/status`
+- PLAYER/ORGANIZER denial for admin operations status
+- operations payload privacy markers
+
 Docker-first local workflow:
 
 ```bash
@@ -124,6 +136,7 @@ pnpm docker:up
 pnpm docker:migrate
 pnpm docker:seed
 pnpm docker:smoke
+pnpm docker:smoke:full
 ```
 
 One-shot utility tasks:
@@ -134,6 +147,8 @@ pnpm docker:payments:reconcile
 ```
 
 `pnpm docker:migrate` and `pnpm docker:seed` are explicit one-shot containers and do not run as part of `pnpm docker:up`.
+
+Docker smoke uses `DOCKER_SMOKE_API_URL=http://backend:3010` by default so the smoke container targets the backend service on the Compose network. Host-based smoke continues to use `API_URL`, defaulting to `http://127.0.0.1:3010`.
 
 For provider-neutral payment readiness coverage, run the backend with `PAYMENT_PROVIDER=mock`. With `PAYMENT_PROVIDER=manual`, the smoke keeps the online-provider branch skipped and still verifies the manual/offline flow.
 
@@ -179,6 +194,52 @@ pnpm notifications:test-email
 
 Do not run the test email command in CI or with placeholder credentials.
 
+## Operations And Health
+
+```bash
+pnpm config:check
+curl http://127.0.0.1:3010/health
+curl http://127.0.0.1:3010/health/ready
+```
+
+- `pnpm config:check` validates the same backend runtime configuration used at app startup and prints a safe summary without secret values.
+- In `NODE_ENV=production`, the config check rejects placeholder JWT secrets, default local CORS/frontend URLs, and missing real-provider configuration when `NOTIFICATION_PROVIDER=smtp` or `PAYMENT_PROVIDER=razorpay`.
+- `/health` is lightweight liveness.
+- `/health/ready` checks database connectivity, Redis reachability, app identity, and required runtime configuration presence without returning secret values.
+- ADMIN users can inspect alert-ready operational status at `/admin/operations` or `GET /admin/operations/status`.
+
+Useful environment variables:
+
+- `OPS_STALE_NOTIFICATION_MINUTES=30`
+- `OPS_STALE_PAYMENT_INTENT_MINUTES=60`
+- `OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD=10`
+- `OPS_FAILED_PAYMENT_ALERT_THRESHOLD=5`
+- `RATE_LIMIT_TTL_SECONDS=60`
+- `RATE_LIMIT_MAX_REQUESTS=120`
+- `AUTH_RATE_LIMIT_MAX_REQUESTS=20`
+- `PAYMENT_RATE_LIMIT_MAX_REQUESTS=30`
+- `EXPORT_RATE_LIMIT_MAX_REQUESTS=20`
+
+These thresholds classify operations status as `ok`, `warning`, or `critical`; they do not send alerts.
+
+Sensitive route rate limits are enforced in-process per backend instance for auth, payment, export, and admin support-action endpoints. Multi-instance production deployments should add edge or load-balancer rate limiting as well.
+
+## Security Checks
+
+```bash
+pnpm audit:deps
+pnpm config:check
+pnpm smoke:mvp
+```
+
+`pnpm audit:deps` runs `pnpm audit` and may require registry/network access. Review findings before upgrading dependencies; do not bulk-upgrade in a release branch without compatibility testing.
+
+Production deployment references:
+
+- Deployment checklist: `docs/deployment/production-checklist.md`
+- Phase 12B notes: `docs/playmatches-clone-prep/32-phase-12b-production-deployment-config-hardening-notes.md`
+- Pre-launch security checklist: `docs/security/pre-launch-security-checklist.md`
+
 ## Payments
 
 Phase 10D keeps manual/offline, mock, and Razorpay payments available while adding payment operations diagnostics, manual refund tracking, and one-shot reconciliation scaffolding.
@@ -209,7 +270,7 @@ pnpm --filter @matchflow/backend payments:reconcile
 
 ## CSV Exports
 
-Phase 11C adds authenticated CSV exports for organizer-owned tournament data and ADMIN support views.
+Phase 11C adds authenticated CSV exports for organizer-owned tournament data and ADMIN support views. Phase 11D adds date-filtered report exports and reconciliation-run CSV export.
 
 Useful environment variables:
 
@@ -221,6 +282,8 @@ Exports are HTTP endpoints rather than CLI commands. They require the same JWT r
 - Admin exports require `ADMIN`.
 - Exports write audit rows with safe metadata such as export type, filters, and row count.
 - CSV responses include formula-injection protection and do not include secrets, raw provider payloads, password hashes, or token fields.
+
+Report endpoints accept optional ISO `from` and `to` query params. Date-only values are interpreted as full UTC calendar days: `from` starts at `00:00:00.000Z`, and `to` ends at `23:59:59.999Z`.
 
 ## MVP Verification
 
@@ -253,4 +316,26 @@ docker-compose down --volumes
 
 `pnpm local:infra:up` starts only Postgres and Redis for host-based backend/frontend development with `pnpm backend:dev` and `pnpm frontend:dev`.
 
-The backend container runs migration deploy and the idempotent dev seed before starting the API. The reset command removes local data volumes and should only be used intentionally.
+`pnpm docker:up` starts postgres, redis, backend, and frontend only; it does not run migrations or seed automatically.
+
+`pnpm local:up` follows the same startup model.
+
+Use `pnpm docker:migrate` and `pnpm docker:seed` explicitly when you need database setup.
+
+`pnpm docker:smoke:full` runs a deterministic local Docker validation flow without resetting data:
+
+1. validate compose config
+2. build backend/frontend images
+3. start postgres and redis
+4. run backend migrations (`backend-migrate`)
+5. run backend seed (`backend-seed`)
+6. start backend and frontend
+7. wait for backend health
+8. run MVP smoke (`smoke`)
+9. run notifications processor
+10. run payment reconciliation
+11. print status and recent backend/frontend logs
+
+`docker:smoke:full` intentionally does not run `docker-compose down` so services remain up for inspection.
+
+The reset command removes local data volumes and should only be used intentionally.

@@ -13,6 +13,7 @@ import {
   useApproveRegistration,
   useCancelOrganizerRegistration,
   useOrganizerRegistrations,
+  useOrganizerReportSummary,
   useOrganizerRosterSummary,
   useRejectRegistration
 } from "@/hooks/use-organizer-rosters";
@@ -20,16 +21,19 @@ import { useOrganizerTournament, useTournamentCategories } from "@/hooks/use-org
 import { getApiErrorMessage } from "@/lib/apis/api-error";
 
 export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: string }>) {
-  const [filters, setFilters] = useState({ categoryId: "", search: "", status: "" });
+  const [filters, setFilters] = useState({ categoryId: "", from: "", search: "", status: "", to: "" });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const tournament = useOrganizerTournament(id);
   const categories = useTournamentCategories(id);
   const summary = useOrganizerRosterSummary(id);
+  const reportSummary = useOrganizerReportSummary(id, { from: filters.from, to: filters.to });
   const registrations = useOrganizerRegistrations(id, {
     categoryId: filters.categoryId,
+    from: filters.from,
     search: filters.search,
-    status: filters.status as OrganizerRostersControllerFindRegistrationsStatusEnum | ""
+    status: filters.status as OrganizerRostersControllerFindRegistrationsStatusEnum | "",
+    to: filters.to
   });
   const approve = useApproveRegistration(id);
   const reject = useRejectRegistration(id);
@@ -40,8 +44,10 @@ export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: strin
     const form = new FormData(event.currentTarget);
     setFilters({
       categoryId: String(form.get("categoryId") ?? ""),
+      from: String(form.get("from") ?? ""),
       search: String(form.get("search") ?? ""),
-      status: String(form.get("status") ?? "")
+      status: String(form.get("status") ?? ""),
+      to: String(form.get("to") ?? "")
     });
   }
 
@@ -84,10 +90,17 @@ export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: strin
           <h2>{tournament.data.title}</h2>
           <p>Review player registrations and approve eligible players into the tournament roster.</p>
         </div>
-        <ExportCsvButton
-          path={`/organizer/tournaments/${id}/registrations/export.csv`}
-          params={{ category_id: filters.categoryId, search: filters.search, status: filters.status }}
-        />
+        <div className="export-action-row">
+          <ExportCsvButton
+            path={`/organizer/tournaments/${id}/registrations/export.csv`}
+            params={{ category_id: filters.categoryId, from: filters.from, search: filters.search, status: filters.status, to: filters.to }}
+          />
+          <ExportCsvButton
+            label="Export report CSV"
+            path={`/organizer/tournaments/${id}/reports/registrations/export.csv`}
+            params={{ category_id: filters.categoryId, from: filters.from, search: filters.search, status: filters.status, to: filters.to }}
+          />
+        </div>
       </div>
       <OrganizerTournamentManagementNav id={id} />
 
@@ -107,6 +120,25 @@ export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: strin
         <article>
           <strong>{summary.data?.teamsActive ?? "-"}</strong>
           <span>Active teams</span>
+        </article>
+      </section>
+
+      <section className="organizer-stat-grid roster-stat-grid" aria-label="Registration report summary">
+        <article>
+          <strong>{getCount(reportSummary.data?.registrationsByStatus, "pending")}</strong>
+          <span>Pending in range</span>
+        </article>
+        <article>
+          <strong>{getCount(reportSummary.data?.registrationsByStatus, "confirmed")}</strong>
+          <span>Confirmed in range</span>
+        </article>
+        <article>
+          <strong>{reportSummary.data?.participantCount ?? "-"}</strong>
+          <span>Participants in range</span>
+        </article>
+        <article>
+          <strong>{reportSummary.data?.completedMatchCount ?? "-"}</strong>
+          <span>Completed matches</span>
         </article>
       </section>
 
@@ -133,6 +165,14 @@ export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: strin
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
           </select>
+        </label>
+        <label>
+          <span>From</span>
+          <input name="from" type="date" defaultValue={filters.from} />
+        </label>
+        <label>
+          <span>To</span>
+          <input name="to" type="date" defaultValue={filters.to} />
         </label>
         <button className="primary-action filter-action" type="submit">Apply filters</button>
       </form>
@@ -165,6 +205,10 @@ export function OrganizerRegistrationManagementView({ id }: Readonly<{ id: strin
       </section>
     </section>
   );
+}
+
+function getCount(items: Array<{ status?: string; key?: string; count: number }> | undefined, key: string) {
+  return items?.find((item) => item.status === key || item.key === key)?.count ?? 0;
 }
 
 function RegistrationRow({

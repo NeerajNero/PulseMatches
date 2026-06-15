@@ -49,19 +49,23 @@ export type AdminCollectionKind =
   | "audit";
 
 interface AdminFilters {
+  from: string;
   page: number;
   search: string;
   status: string;
   role: string;
   provider: string;
+  to: string;
 }
 
 const DEFAULT_FILTERS: AdminFilters = {
+  from: "",
   page: 1,
   search: "",
   status: "",
   role: "",
-  provider: ""
+  provider: "",
+  to: ""
 };
 
 export function AdminCollectionView({ kind }: Readonly<{ kind: AdminCollectionKind }>) {
@@ -177,9 +181,11 @@ function AdminRegistrationsView() {
   const registrations = useAdminRegistrations({
     page: filters.page,
     limit: 20,
+    from: filters.from,
     search: filters.search,
-    status: filters.status as AdminControllerListRegistrationsRequest["status"]
-  });
+    status: filters.status as AdminControllerListRegistrationsRequest["status"],
+    to: filters.to
+  } as unknown as AdminControllerListRegistrationsRequest);
 
   return (
     <AdminListFrame
@@ -194,7 +200,11 @@ function AdminRegistrationsView() {
         { label: "Cancelled", value: "cancelled" }
       ]}
       exportPath="/admin/registrations/export.csv"
-      exportParams={{ search: filters.search, status: filters.status }}
+      exportParams={{ from: filters.from, search: filters.search, status: filters.status, to: filters.to }}
+      secondaryExportLabel="Export report CSV"
+      secondaryExportPath="/admin/reports/registrations/export.csv"
+      secondaryExportParams={{ from: filters.from, search: filters.search, status: filters.status, to: filters.to }}
+      showDateFilters
       query={registrations}
       renderItems={(items) => items.map((registration) => <RegistrationRow key={registration.id} registration={registration} />)}
     />
@@ -206,10 +216,12 @@ function AdminPaymentsView() {
   const payments = useAdminPayments({
     page: filters.page,
     limit: 20,
+    from: filters.from,
     search: filters.search,
     status: filters.status as AdminControllerListPaymentsRequest["status"],
-    provider: filters.provider as AdminControllerListPaymentsRequest["provider"]
-  });
+    provider: filters.provider as AdminControllerListPaymentsRequest["provider"],
+    to: filters.to
+  } as unknown as AdminControllerListPaymentsRequest);
 
   return (
     <AdminListFrame
@@ -230,7 +242,11 @@ function AdminPaymentsView() {
         { label: "Razorpay", value: "razorpay" }
       ]}
       exportPath="/admin/payments/export.csv"
-      exportParams={{ search: filters.search, status: filters.status, provider: filters.provider }}
+      exportParams={{ from: filters.from, search: filters.search, status: filters.status, provider: filters.provider, to: filters.to }}
+      secondaryExportLabel="Export report CSV"
+      secondaryExportPath="/admin/reports/payments/export.csv"
+      secondaryExportParams={{ from: filters.from, search: filters.search, status: filters.status, provider: filters.provider, to: filters.to }}
+      showDateFilters
       query={payments}
       renderItems={(items) => items.map((payment) => <PaymentRow key={payment.id} payment={payment} />)}
     />
@@ -272,9 +288,11 @@ function AdminReconciliationView() {
   const runs = useAdminReconciliationRuns({
     page: filters.page,
     limit: 20,
+    from: filters.from,
     provider: filters.provider as AdminControllerListReconciliationRunsRequest["provider"],
-    status: filters.status as AdminControllerListReconciliationRunsRequest["status"]
-  });
+    status: filters.status as AdminControllerListReconciliationRunsRequest["status"],
+    to: filters.to
+  } as unknown as AdminControllerListReconciliationRunsRequest);
 
   return (
     <AdminListFrame
@@ -292,6 +310,9 @@ function AdminReconciliationView() {
         { label: "Mock", value: "mock" },
         { label: "Razorpay", value: "razorpay" }
       ]}
+      exportPath="/admin/reconciliation-runs/export.csv"
+      exportParams={{ from: filters.from, provider: filters.provider, status: filters.status, to: filters.to }}
+      showDateFilters
       query={runs}
       renderItems={(items) => items.map((run) => <ReconciliationRow key={run.id} run={run} />)}
     />
@@ -329,6 +350,10 @@ function AdminListFrame<TItem>({
   providerOptions,
   query,
   renderItems,
+  secondaryExportLabel,
+  secondaryExportParams,
+  secondaryExportPath,
+  showDateFilters = false,
   statusLabel = "Status",
   statusOptions,
   title
@@ -341,6 +366,10 @@ function AdminListFrame<TItem>({
   providerOptions?: Array<{ label: string; value: string }>;
   query: { data?: { items: TItem[]; pagination: { page: number; totalPages: number; total: number } } | null; isError: boolean; isLoading: boolean };
   renderItems: (items: TItem[]) => React.ReactNode;
+  secondaryExportLabel?: string;
+  secondaryExportParams?: Record<string, string>;
+  secondaryExportPath?: string;
+  showDateFilters?: boolean;
   statusLabel?: string;
   statusOptions?: Array<{ label: string; value: string }>;
   title: string;
@@ -353,7 +382,9 @@ function AdminListFrame<TItem>({
       page: 1,
       search: String(form.get("search") ?? ""),
       status: String(form.get("status") ?? ""),
-      provider: String(form.get("provider") ?? "")
+      provider: String(form.get("provider") ?? ""),
+      from: String(form.get("from") ?? ""),
+      to: String(form.get("to") ?? "")
     });
   }
 
@@ -364,7 +395,12 @@ function AdminListFrame<TItem>({
           <h2>{title}</h2>
           <p>{description}</p>
         </div>
-        {exportPath ? <ExportCsvButton path={exportPath} params={exportParams} /> : null}
+        <div className="export-action-row">
+          {exportPath ? <ExportCsvButton path={exportPath} params={exportParams} /> : null}
+          {secondaryExportPath ? (
+            <ExportCsvButton label={secondaryExportLabel} path={secondaryExportPath} params={secondaryExportParams} />
+          ) : null}
+        </div>
       </div>
 
       <form className="filter-bar organizer-filter-bar admin-filter-bar" onSubmit={onSubmit}>
@@ -389,6 +425,18 @@ function AdminListFrame<TItem>({
               {providerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
+        ) : null}
+        {showDateFilters ? (
+          <>
+            <label>
+              <span>From</span>
+              <input name="from" type="date" defaultValue={filters.from} />
+            </label>
+            <label>
+              <span>To</span>
+              <input name="to" type="date" defaultValue={filters.to} />
+            </label>
+          </>
         ) : null}
         <button className="primary-action filter-action" type="submit">Apply filters</button>
       </form>

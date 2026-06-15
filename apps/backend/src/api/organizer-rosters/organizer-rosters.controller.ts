@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuard
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RoleType } from "@prisma/client";
 import type { Response } from "express";
+import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { sendCsvResponse } from "../../common/utils/csv.util";
 import { AuthenticatedUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -20,10 +21,12 @@ import {
   OrganizerPaymentDetailApiResponseDto,
   OrganizerPaymentListApiResponseDto,
   OrganizerPaymentListQueryDto,
+  OrganizerReportDateRangeQueryDto,
   OrganizerRegistrationApiResponseDto,
   OrganizerRegistrationListApiResponseDto,
   OrganizerRegistrationListQueryDto,
   OrganizerRosterSummaryApiResponseDto,
+  OrganizerTournamentReportSummaryApiResponseDto,
   OrganizerTeamApiResponseDto,
   OrganizerTeamListApiResponseDto,
   OrganizerTeamListQueryDto,
@@ -51,6 +54,17 @@ export class OrganizerRostersController {
     return this.organizerRostersService.getSummary(currentUser, id);
   }
 
+  @Get("reports/summary")
+  @ApiOperation({ summary: "Get organizer-owned tournament reporting summary" })
+  @ApiOkResponse({ type: OrganizerTournamentReportSummaryApiResponseDto })
+  getReportSummary(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Query() query: OrganizerReportDateRangeQueryDto
+  ) {
+    return this.organizerRostersService.getReportSummary(currentUser, id, query);
+  }
+
   @Get("registrations")
   @ApiOperation({ summary: "List registrations for one owned organizer tournament" })
   @ApiOkResponse({ type: OrganizerRegistrationListApiResponseDto })
@@ -63,6 +77,7 @@ export class OrganizerRostersController {
   }
 
   @Get("registrations/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export registrations for one owned organizer tournament as CSV" })
   async exportRegistrations(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -71,6 +86,19 @@ export class OrganizerRostersController {
     @Res() response: Response
   ) {
     const exportFile = await this.organizerRostersService.exportRegistrations(currentUser, id, query);
+    return sendCsvResponse(response, exportFile);
+  }
+
+  @Get("reports/registrations/export.csv")
+  @RateLimit({ bucket: "export" })
+  @ApiOperation({ summary: "Export organizer registration report as CSV" })
+  async exportRegistrationReport(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Query() query: OrganizerRegistrationListQueryDto,
+    @Res() response: Response
+  ) {
+    const exportFile = await this.organizerRostersService.exportRegistrationReport(currentUser, id, query);
     return sendCsvResponse(response, exportFile);
   }
 
@@ -86,6 +114,7 @@ export class OrganizerRostersController {
   }
 
   @Get("payments/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export payment summaries for one owned organizer tournament as CSV" })
   async exportPayments(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -94,6 +123,19 @@ export class OrganizerRostersController {
     @Res() response: Response
   ) {
     const exportFile = await this.organizerRostersService.exportPayments(currentUser, id, query);
+    return sendCsvResponse(response, exportFile);
+  }
+
+  @Get("reports/payments/export.csv")
+  @RateLimit({ bucket: "export" })
+  @ApiOperation({ summary: "Export organizer payment report as CSV" })
+  async exportPaymentReport(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Query() query: OrganizerPaymentListQueryDto,
+    @Res() response: Response
+  ) {
+    const exportFile = await this.organizerRostersService.exportPaymentReport(currentUser, id, query);
     return sendCsvResponse(response, exportFile);
   }
 
@@ -109,6 +151,7 @@ export class OrganizerRostersController {
   }
 
   @Patch("registrations/:registrationId/payment")
+  @RateLimit({ bucket: "payment" })
   @ApiOperation({ summary: "Update manual payment status for one owned tournament registration" })
   @ApiOkResponse({ type: OrganizerPaymentApiResponseDto })
   updateRegistrationPayment(
@@ -121,6 +164,7 @@ export class OrganizerRostersController {
   }
 
   @Post("registrations/:registrationId/refunds")
+  @RateLimit({ bucket: "payment" })
   @ApiOperation({ summary: "Record or request a refund for one owned tournament registration" })
   @ApiCreatedResponse({ type: OrganizerPaymentDetailApiResponseDto })
   createPaymentRefund(
@@ -178,6 +222,7 @@ export class OrganizerRostersController {
   }
 
   @Get("participants/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export participants for one owned organizer tournament as CSV" })
   async exportParticipants(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -235,6 +280,7 @@ export class OrganizerRostersController {
   }
 
   @Get("teams/export.csv")
+  @RateLimit({ bucket: "export" })
   @ApiOperation({ summary: "Export teams and members for one owned organizer tournament as CSV" })
   async exportTeams(
     @CurrentUser() currentUser: AuthenticatedUser,

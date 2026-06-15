@@ -9,6 +9,7 @@ export const ORGANIZER_TOURNAMENT_QUERY_KEYS = {
   TOURNAMENT: (id: string) => ["organizer", "tournament", id] as const,
   CATEGORIES: (id: string) => ["organizer", "tournament", id, "categories"] as const,
   ROSTER_SUMMARY: (id: string) => ["organizer", "tournament", id, "roster-summary"] as const,
+  REPORT_SUMMARY: (id: string, filters: unknown) => ["organizer", "tournament", id, "report-summary", filters] as const,
   REGISTRATIONS: (id: string, filters: unknown) => ["organizer", "tournament", id, "registrations", filters] as const,
   PAYMENTS: (id: string, filters: unknown) => ["organizer", "tournament", id, "payments", filters] as const,
   PAYMENT_DETAIL: (id: string, registrationId: string) => ["organizer", "tournament", id, "payments", registrationId] as const,
@@ -36,6 +37,7 @@ export const REGISTRATION_QUERY_KEYS = {
 
 export const ADMIN_QUERY_KEYS = {
   DASHBOARD: ["admin", "dashboard"] as const,
+  REPORT_SUMMARY: (filters: unknown) => ["admin", "reports", "summary", filters] as const,
   USERS: (filters: unknown) => ["admin", "users", filters] as const,
   ORGANIZERS: (filters: unknown) => ["admin", "organizers", filters] as const,
   ORGANIZER_DETAIL: (organizerId: string) => ["admin", "organizers", organizerId] as const,
@@ -45,5 +47,6 @@ export const ADMIN_QUERY_KEYS = {
   PAYMENT_DETAIL: (paymentRecordId: string) => ["admin", "payments", paymentRecordId] as const,
   NOTIFICATIONS: (filters: unknown) => ["admin", "notifications", filters] as const,
   RECONCILIATION: (filters: unknown) => ["admin", "reconciliation", filters] as const,
+  OPERATIONS: ["admin", "operations", "status"] as const,
   AUDIT: (filters: unknown) => ["admin", "audit", filters] as const
 };
