@@ -19,7 +19,11 @@ import {
 } from "@/hooks/use-organizer-fixtures";
 import { useOrganizerTournament } from "@/hooks/use-organizer-tournaments";
 import { getApiErrorMessage } from "@/lib/apis/api-error";
-import { organizerTournamentFixtureScoringRoute, organizerTournamentFixturesRoute } from "@/utils/route";
+import {
+  organizerTournamentFixtureScoringRoute,
+  organizerTournamentFixturesRoute,
+  scoringFixtureRoute
+} from "@/utils/route";
 
 export function OrganizerFixtureDetailView({
   fixtureSetId,
@@ -149,6 +153,7 @@ export function OrganizerFixtureDetailView({
         <div className="organizer-row-actions fixture-detail-actions">
           <a className="secondary-action" href={organizerTournamentFixturesRoute(id)}>All fixture sets</a>
           <a className="primary-action" href={organizerTournamentFixtureScoringRoute(id, fixtureSetId)}>Score matches</a>
+          <a className="primary-action" href={scoringFixtureRoute(fixtureSetId, id)} style={{ background: 'var(--gold)', color: 'black' }}>Open in Scoring App</a>
           <ExportCsvButton path={`/organizer/tournaments/${id}/fixtures/${fixtureSetId}/results/export.csv`} />
           {!isArchived && !isPublic ? (
             <button

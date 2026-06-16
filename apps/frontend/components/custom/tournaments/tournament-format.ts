@@ -51,3 +51,27 @@ export function getVenueSummary(tournament: TournamentListItemDto) {
   return tournament.venue?.name ?? tournament.city.name;
 }
 
+export function getStatusTone(value?: string | null) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return "status-pill-neutral";
+  }
+
+  if (["open", "registration_open", "published", "live", "completed", "paid", "approved", "ready", "active"].includes(normalized)) {
+    return "status-pill-ready";
+  }
+
+  if (["closed", "registration_closed", "cancelled", "canceled", "rejected", "refunded", "draft", "blocked", "archived"].includes(normalized)) {
+    return "status-pill-closed";
+  }
+
+  if (["full", "registration_full"].includes(normalized)) {
+    return "status-pill-live";
+  }
+
+  if (["pending", "planned", "scheduled", "needs_action", "requires_action", "processing"].includes(normalized)) {
+    return "status-pill-planned";
+  }
+
+  return "status-pill-info";
+}

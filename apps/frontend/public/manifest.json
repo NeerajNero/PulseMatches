@@ -1,0 +1,40 @@
+{
+  "name": "MatchFlow Arena",
+  "short_name": "MatchFlow",
+  "description": "Sports tournament discovery, live scoring, and registration.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#10231d",
+  "background_color": "#10231d",
+  "categories": ["sports", "entertainment"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Tournaments",
+      "short_name": "Tournaments",
+      "url": "/tournaments",
+      "description": "Browse all public tournaments"
+    },
+    {
+      "name": "Scoring",
+      "short_name": "Score",
+      "url": "/scoring",
+      "description": "Open the live scoring dashboard"
+    }
+  ]
+}

@@ -1,50 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
-import { useCurrentUser, useLogout } from "@/hooks/use-auth";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { getRoleLandingRoute } from "@/utils/auth-redirect";
 import { ROUTES } from "@/utils/route";
 
 export default function MePage() {
+  const router = useRouter();
   const currentUser = useCurrentUser();
-  const logout = useLogout();
+  const roles = useMemo(() => currentUser.data?.roles ?? [], [currentUser.data?.roles]);
 
   useEffect(() => {
-    if (!currentUser.isLoading && !currentUser.data) {
-      window.location.assign(ROUTES.LOGIN);
+    if (currentUser.isLoading) {
+      return;
     }
-  }, [currentUser.data, currentUser.isLoading]);
-
-  if (currentUser.isLoading || !currentUser.data) {
-    return <main className="dashboard-shell"><p>Loading profile</p></main>;
-  }
+    if (!currentUser.data) {
+      router.replace(ROUTES.LOGIN);
+      return;
+    }
+    router.replace(getRoleLandingRoute(roles));
+  }, [currentUser.data, currentUser.isLoading, roles, router]);
 
   return (
     <main className="dashboard-shell">
-      <section className="dashboard-header">
-        <div>
-          <span className="eyebrow">Signed in</span>
-          <h1>{currentUser.data.displayName}</h1>
-          <p>{currentUser.data.email}</p>
-        </div>
-        <button
-          className="secondary-action"
-          type="button"
-          onClick={() => logout.mutate(undefined, { onSettled: () => window.location.assign(ROUTES.LOGIN) })}
-        >
-          Log out
-        </button>
-      </section>
-      <section className="dashboard-grid">
-        <article className="feature-tile">
-          <span>Roles</span>
-          <h3>{currentUser.data.roles.join(", ")}</h3>
-        </article>
-        <article className="feature-tile">
-          <span>Status</span>
-          <h3>{currentUser.data.status}</h3>
-        </article>
-      </section>
+      <p className="state-text compact-state">Redirecting.</p>
     </main>
   );
 }
-

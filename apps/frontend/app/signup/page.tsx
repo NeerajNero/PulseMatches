@@ -1,13 +1,16 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SignupRequestDtoRoleEnum } from "@matchflow/client-sdk";
 import { AuthShell } from "@/components/custom/auth/auth-shell";
 import { getDefaultSignupRole, useSignup } from "@/hooks/use-auth";
+import { getPostAuthRedirectPath } from "@/utils/auth-redirect";
 import { ROUTES } from "@/utils/route";
 
 export default function SignupPage() {
   const signup = useSignup();
+  const router = useRouter();
   const [role, setRole] = useState(getDefaultSignupRole());
   const [error, setError] = useState<string | null>(null);
 
@@ -23,11 +26,14 @@ export default function SignupPage() {
         role,
         organizationName: role === SignupRequestDtoRoleEnum.Organizer
           ? String(form.get("organizationName") ?? "")
-          : undefined,
+        : undefined,
         contactPhone: String(form.get("contactPhone") ?? "") || undefined
       });
-      const roles = result?.user.roles ?? [];
-      window.location.assign(roles.includes("ORGANIZER") ? ROUTES.ORGANIZER : ROUTES.ME);
+      const searchParams = new URLSearchParams(window.location.search);
+      router.replace(getPostAuthRedirectPath({
+        roles: result?.user.roles ?? [],
+        searchParams
+      }));
     } catch {
       setError("Unable to create that account.");
     }
@@ -76,4 +82,3 @@ export default function SignupPage() {
     </AuthShell>
   );
 }
-

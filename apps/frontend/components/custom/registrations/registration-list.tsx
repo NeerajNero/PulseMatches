@@ -5,7 +5,8 @@ import { useState } from "react";
 import {
   formatDate,
   formatDateRange,
-  formatLabel
+  formatLabel,
+  getStatusTone
 } from "@/components/custom/tournaments/tournament-format";
 import {
   getApiErrorMessage,
@@ -157,82 +158,82 @@ export function RegistrationList({ registrations }: Readonly<{ registrations: Re
       {registrations.map((registration) => (
         <article className="registration-list-item" key={registration.id}>
           <div>
+            <div className="status-pill-row registration-badges" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+              <span className={`status-pill ${getStatusTone(registration.status)}`}>{formatLabel(registration.status)}</span>
+              <span className={`status-pill ${getStatusTone(registration.paymentStatus)}`}>{formatLabel(registration.paymentStatus)}</span>
+            </div>
             <span className="eyebrow">{registration.tournament.sport.name}</span>
-            <h2>{registration.tournament.title}</h2>
-            <p>
-              {registration.category?.name ?? "Tournament registration"} ·{" "}
+            <h2 style={{ marginBottom: '4px' }}>{registration.tournament.title}</h2>
+            <p style={{ fontSize: '15px' }}>
+              <strong>{registration.category?.name ?? "Tournament registration"}</strong> ·{" "}
               {registration.tournament.city.name} ·{" "}
               {formatDateRange(registration.tournament.startsAt, registration.tournament.endsAt)}
             </p>
           </div>
+          
           <dl className="registration-status-grid">
             <div><dt>Status</dt><dd>{formatLabel(registration.status)}</dd></div>
             <div><dt>Payment</dt><dd>{formatPaymentSummary(registration)}</dd></div>
             <div><dt>Registered</dt><dd>{formatDate(registration.createdAt)}</dd></div>
           </dl>
-          {registration.payment?.offlineInstructions ? (
-            <p className="state-text compact-state">
-              {registration.payment.offlineInstructions}
-              {registration.payment.paidAt ? ` Paid ${formatDate(registration.payment.paidAt)}.` : ""}
-            </p>
-          ) : null}
-          {registration.payment?.latestIntentStatus ? (
-            <p className="state-text compact-state">
-              Online intent {formatLabel(registration.payment.latestIntentStatus)}
-              {registration.payment.provider ? ` via ${formatLabel(registration.payment.provider)}` : ""}.
-              {registration.payment.eventCount > 0 ? ` Events recorded: ${registration.payment.eventCount}.` : ""}
-            </p>
-          ) : null}
-          {registration.payment?.refundCount ? (
-            <p className="state-text compact-state">
-              Refund {formatLabel(registration.payment.latestRefundStatus ?? "recorded")} ·{" "}
-              {registration.payment.currency} {registration.payment.refundedAmount}
-              {registration.payment.latestRefundProcessedAt
-                ? ` · ${formatDate(registration.payment.latestRefundProcessedAt)}`
-                : ""}
-            </p>
-          ) : null}
-          <div className="registration-actions">
+
+          <div className="registration-actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <a className="secondary-action" href={tournamentDetailRoute(registration.tournament.slug)}>
               View tournament
             </a>
             <a className="secondary-action" href={`${tournamentDetailRoute(registration.tournament.slug)}#fixtures-results`}>
-              Fixtures and results
+              Results & fixtures
             </a>
             {registration.payment?.onlinePaymentAvailable ? (
               <button
-                className="secondary-action"
+                className="primary-action"
                 type="button"
                 disabled={createPaymentIntent.isPending || verifyRazorpayPayment.isPending}
                 onClick={() => void onStartPayment(registration)}
               >
-                {createPaymentIntent.isPending || verifyRazorpayPayment.isPending ? "Starting" : "Start payment"}
+                {createPaymentIntent.isPending || verifyRazorpayPayment.isPending ? "Starting..." : "Start payment"}
               </button>
             ) : null}
             {registration.payment?.checkoutUrl ? (
-              <a className="secondary-action" href={registration.payment.checkoutUrl}>
-                Mock checkout
+              <a className="primary-action" href={registration.payment.checkoutUrl}>
+                Complete payment
               </a>
             ) : null}
             {registration.payment?.provider === "mock" && registration.payment.latestIntentStatus === "requires_action" ? (
               <button
-                className="secondary-action"
+                className="primary-action"
                 type="button"
                 disabled={mockCompletePayment.isPending || !registration.payment.latestIntentId}
                 onClick={() => void onMockComplete(registration.payment?.latestIntentId ?? "")}
               >
-                {mockCompletePayment.isPending ? "Completing" : "Simulate paid"}
+                {mockCompletePayment.isPending ? "Completing..." : "Simulate payment"}
               </button>
             ) : null}
             {registration.status === "pending" ? (
               <button
                 className="secondary-action"
                 type="button"
+                style={{ borderColor: '#f87171', color: '#dc2626' }}
                 disabled={cancelRegistration.isPending}
                 onClick={() => void onCancel(registration.id)}
               >
-                {cancelRegistration.isPending ? "Cancelling" : "Cancel"}
+                {cancelRegistration.isPending ? "Cancelling..." : "Cancel entry"}
               </button>
+            ) : null}
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', marginTop: '12px', borderTop: '1px solid var(--line)', paddingTop: '12px' }}>
+            {registration.payment?.offlineInstructions ? (
+              <p className="state-text compact-state" style={{ marginBottom: '8px' }}>
+                <strong>Offline Instructions:</strong> {registration.payment.offlineInstructions}
+                {registration.payment.paidAt ? ` (Paid ${formatDate(registration.payment.paidAt)})` : ""}
+              </p>
+            ) : null}
+            {registration.payment?.latestIntentStatus && registration.payment.latestIntentStatus !== 'succeeded' ? (
+              <p className="state-text compact-state">
+                Online payment {formatLabel(registration.payment.latestIntentStatus)}
+                {registration.payment.provider ? ` via ${formatLabel(registration.payment.provider)}` : ""}.
+              </p>
             ) : null}
           </div>
         </article>

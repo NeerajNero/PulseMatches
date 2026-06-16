@@ -21,6 +21,7 @@ import {
   organizerTournamentParticipantsRoute,
   organizerTournamentRegistrationsRoute,
   organizerTournamentTeamsRoute,
+  scoringTournamentRoute,
   ROUTES
 } from "@/utils/route";
 
@@ -164,38 +165,49 @@ function OrganizerTournamentRow({
   }
 
   return (
-    <article className="organizer-table-row">
-      <div>
-        <span className={`status-pill ${getStatusTone(tournament.status)}`}>{formatLabel(tournament.status)}</span>
-        <h3>{tournament.title}</h3>
-        <p>{tournament.sport.name} · {tournament.city.name} · {formatDateRange(tournament.startsAt, tournament.endsAt)}</p>
-        <p>{tournament.registrationCount} registrations · {tournament.pendingRegistrationCount} pending</p>
+    <article className="organizer-table-row" style={{ padding: '24px' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <span className={`status-pill ${getStatusTone(tournament.status)}`}>{formatLabel(tournament.status)}</span>
+          <span className="status-pill status-pill-info">{tournament.sport.name}</span>
+        </div>
+        <h3 style={{ fontSize: '20px', marginBottom: '4px' }}>{tournament.title}</h3>
+        <p style={{ marginBottom: '12px' }}>
+          <strong>{tournament.venue?.name ?? tournament.city.name}</strong> · {formatDateRange(tournament.startsAt, tournament.endsAt)}
+        </p>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--muted)' }}>
+          <span><strong>{tournament.registrationCount}</strong> entries ({tournament.pendingRegistrationCount} pending)</span>
+          <span><strong>{tournament.maxParticipants ?? 'Open'}</strong> capacity</span>
+        </div>
       </div>
-      <div className="organizer-row-actions">
-        {publicHref ? <a className="secondary-action" href={publicHref}>Public page</a> : null}
-        <a className="secondary-action" href={organizerTournamentEditRoute(tournament.id)}>Edit</a>
-        <a className="secondary-action" href={organizerTournamentCategoriesRoute(tournament.id)}>Categories</a>
+      
+      <div className="organizer-row-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', width: '320px' }}>
+        <a className="secondary-action" href={organizerTournamentEditRoute(tournament.id)}>Settings</a>
         <a className="secondary-action" href={organizerTournamentRegistrationsRoute(tournament.id)}>Registrations</a>
         <a className="secondary-action" href={organizerTournamentParticipantsRoute(tournament.id)}>Participants</a>
-        <a className="secondary-action" href={organizerTournamentTeamsRoute(tournament.id)}>Teams</a>
         <a className="secondary-action" href={organizerTournamentFixturesRoute(tournament.id)}>Fixtures</a>
+        <a className="secondary-action" href={scoringTournamentRoute(tournament.id)} style={{ gridColumn: 'span 2', background: 'var(--gold-soft)' }}>Enter Scoring App</a>
+        {publicHref && <a className="secondary-action" href={publicHref} style={{ gridColumn: 'span 2' }}>Public page</a>}
+        
         {tournament.status === "published" ? (
           <button
             className="secondary-action"
             type="button"
+            style={{ gridColumn: 'span 2', borderColor: '#f87171', color: '#dc2626' }}
             disabled={unpublishTournament.isPending}
             onClick={() => void runUnpublish()}
           >
-            {unpublishTournament.isPending ? "Unpublishing" : "Unpublish"}
+            {unpublishTournament.isPending ? "Unpublishing..." : "Unpublish Tournament"}
           </button>
         ) : (
           <button
             className="primary-action"
             type="button"
+            style={{ gridColumn: 'span 2' }}
             disabled={publishTournament.isPending}
             onClick={() => void runPublish()}
           >
-            {publishTournament.isPending ? "Publishing" : "Publish"}
+            {publishTournament.isPending ? "Publishing..." : "Publish Tournament"}
           </button>
         )}
       </div>

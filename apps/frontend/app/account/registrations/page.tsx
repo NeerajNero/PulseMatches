@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { RegistrationList } from "@/components/custom/registrations/registration-list";
+import { AccountNavigation } from "@/components/custom/account/account-navigation";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useMyRegistrations } from "@/hooks/use-registrations";
 import { ROUTES } from "@/utils/route";
@@ -22,6 +23,7 @@ export default function AccountRegistrationsPage() {
 
   return (
     <main className="dashboard-shell">
+      <AccountNavigation />
       <section className="dashboard-header">
         <div>
           <span className="eyebrow">Account</span>

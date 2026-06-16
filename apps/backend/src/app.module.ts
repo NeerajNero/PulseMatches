@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { AdminModule } from "./api/admin/admin.module";
 import { AuthModule } from "./api/auth/auth.module";
 import { DiscoveryModule } from "./api/discovery/discovery.module";
@@ -21,6 +22,12 @@ import { NotificationsModule } from "./notifications/notifications.module";
       isGlobal: true,
       validate: validateEnv
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100
+      }
+    ]),
     HealthModule,
     AdminModule,
     AuthModule,
@@ -34,6 +41,10 @@ import { NotificationsModule } from "./notifications/notifications.module";
     NotificationsModule
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    },
     {
       provide: APP_GUARD,
       useClass: RateLimitGuard
