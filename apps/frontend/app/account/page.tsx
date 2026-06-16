@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Account | MatchFlow Arena",
-  description: "Manage your player account and tournament registrations."
-};
+import { AccountNavigation } from "@/components/custom/account/account-navigation";
+import { ROUTES } from "@/utils/route";
 
 export default function AccountPage() {
   return (
     <main className="dashboard-shell">
+      <AccountNavigation />
       <section className="dashboard-header">
         <div>
           <span className="eyebrow">Account</span>

@@ -25,7 +25,9 @@ export const ROUTES = {
   ADMIN_NOTIFICATIONS: "/admin/notifications",
   ADMIN_RECONCILIATION: "/admin/reconciliation",
   ADMIN_OPERATIONS: "/admin/operations",
-  ADMIN_AUDIT: "/admin/audit"
+  ADMIN_AUDIT: "/admin/audit",
+  SCORING: "/scoring",
+  SCORING_TOURNAMENTS: "/scoring/tournaments"
 } as const;
 
 export function tournamentDetailRoute(slug: string) {
@@ -78,4 +80,16 @@ export function adminPaymentDetailRoute(paymentRecordId: string) {
 
 export function adminOrganizerDetailRoute(organizerId: string) {
   return `/admin/organizers/${organizerId}`;
+}
+
+export function scoringTournamentRoute(id: string) {
+  return `/scoring/tournaments/${id}`;
+}
+
+export function scoringFixtureRoute(fixtureSetId: string, tournamentId: string) {
+  return `/scoring/fixtures/${fixtureSetId}?tournamentId=${tournamentId}`;
+}
+
+export function scoringMatchRoute(matchId: string, fixtureSetId: string, tournamentId: string) {
+  return `/scoring/matches/${matchId}?fixtureSetId=${fixtureSetId}&tournamentId=${tournamentId}`;
 }

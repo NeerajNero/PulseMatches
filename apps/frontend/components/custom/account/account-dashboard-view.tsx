@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/apis/api";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useMyRegistrations } from "@/hooks/use-registrations";
 import { DISCOVERY_QUERY_KEYS } from "@/utils/query-constants";
+import { AccountNavigation } from "@/components/custom/account/account-navigation";
 import { getRoleLandingRoute } from "@/utils/auth-redirect";
 import { ROUTES, tournamentDetailRoute } from "@/utils/route";
 import { formatDate, formatDateRange, formatDateTime, formatLabel } from "@/components/custom/tournaments/tournament-format";
@@ -84,14 +85,27 @@ export function AccountDashboardView() {
     );
   }
 
-  const activeRegistrations = sortedRegistrations.filter((registration) => ACTIVE_REGISTRATION_STATUSES.has(registration.status));
+  const pendingRegistrations = sortedRegistrations.filter((r) => r.status === "pending");
+  const approvedRegistrations = sortedRegistrations.filter((r) => r.status === "confirmed");
+  const paidRegistrations = sortedRegistrations.filter((r) => r.paymentStatus === "paid");
   const pendingPayments = sortedRegistrations.filter((registration) => isPendingPayment(registration));
-  const upcomingRegistrations = sortedRegistrations.filter((registration) => new Date(registration.tournament.startsAt).getTime() >= Date.now());
+  
+  const paymentAttention = sortedRegistrations.filter((r) => 
+    ["pending", "pending_offline", "requires_action", "failed"].includes(r.paymentStatus) &&
+    r.status !== "cancelled"
+  );
+
+  const upcomingRegistrations = sortedRegistrations.filter((registration) => 
+    new Date(registration.tournament.startsAt).getTime() >= Date.now() &&
+    registration.status !== "cancelled"
+  );
+  
   const publishedFixtureSets = fixtureQueries.flatMap((query) => (query.data ?? []).filter((fixtureSet) => Boolean(fixtureSet.publishedAt)));
   const publishedMatchCount = publishedFixtureSets.reduce((total, fixtureSet) => total + fixtureSet.completedMatchCount, 0);
 
   return (
     <main className="dashboard-shell">
+      <AccountNavigation />
       <section className="dashboard-header">
         <div>
           <span className="eyebrow">Player dashboard</span>
@@ -100,105 +114,118 @@ export function AccountDashboardView() {
         </div>
         <div className="organizer-header-actions">
           <a className="primary-action" href={ROUTES.TOURNAMENTS}>Browse tournaments</a>
-          <a className="secondary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>View registrations</a>
+          <a className="secondary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>My registrations</a>
         </div>
       </section>
 
       <section className="dashboard-grid organizer-stat-grid">
         <article className="feature-tile">
-          <span>Registered</span>
+          <span>Total entries</span>
           <h3>{sortedRegistrations.length}</h3>
         </article>
         <article className="feature-tile">
-          <span>Active</span>
-          <h3>{activeRegistrations.length}</h3>
+          <span>Pending</span>
+          <h3>{pendingRegistrations.length}</h3>
         </article>
         <article className="feature-tile">
-          <span>Pending payments</span>
-          <h3>{pendingPayments.length}</h3>
+          <span>Approved</span>
+          <h3>{approvedRegistrations.length}</h3>
         </article>
         <article className="feature-tile">
-          <span>Upcoming</span>
-          <h3>{upcomingRegistrations.length}</h3>
+          <span>Paid</span>
+          <h3>{paidRegistrations.length}</h3>
         </article>
       </section>
+
+      <section className="registration-actions" style={{ marginBottom: '32px', gap: '12px' }}>
+        <a className="secondary-action" href={ROUTES.TOURNAMENTS}>Browse tournaments</a>
+        <a className="secondary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>View registrations</a>
+        <a className="secondary-action" href="#payments">View payments</a>
+        <a className="secondary-action" href="#results">View results</a>
+      </section>
+
+      {paymentAttention.length > 0 && (
+        <section className="organizer-panel" id="payments">
+          <div className="section-heading organizer-section-heading">
+            <div>
+              <h2 style={{ color: 'var(--gold)' }}>Payment attention required</h2>
+              <p>You have {paymentAttention.length} registration{paymentAttention.length === 1 ? '' : 's'} awaiting payment or verification.</p>
+            </div>
+          </div>
+          <div className="registration-list">
+            {paymentAttention.map((registration) => (
+              <article className="registration-list-item" key={registration.id} style={{ borderLeft: '4px solid var(--gold)' }}>
+                <div>
+                  <span className="eyebrow">{registration.tournament.sport.name}</span>
+                  <h2>{registration.tournament.title}</h2>
+                  <p>{registration.category?.name ?? "Tournament registration"}</p>
+                </div>
+                <dl className="registration-status-grid">
+                  <div><dt>Payment status</dt><dd>{formatLabel(registration.paymentStatus)}</dd></div>
+                  <div><dt>Amount</dt><dd>{formatPaymentSummary(registration)}</dd></div>
+                </dl>
+                <div className="registration-actions">
+                  {registration.payment?.checkoutUrl ? (
+                    <a className="primary-action" href={registration.payment.checkoutUrl}>
+                      Complete payment
+                    </a>
+                  ) : (
+                    <a className="primary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>
+                      Manage payment
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="organizer-panel">
         <div className="section-heading organizer-section-heading">
           <div>
-            <h2>My registrations</h2>
-            <p>Keep an eye on tournament status, payment status, and next steps.</p>
+            <h2>Upcoming tournaments</h2>
+            <p>Your confirmed and pending entries for upcoming events.</p>
           </div>
         </div>
 
-        {registrations.isLoading ? <p className="state-text compact-state">Loading registrations.</p> : null}
-        {registrations.isError ? (
+        {upcomingRegistrations.length === 0 ? (
           <section className="empty-state account-empty-state">
-            <h2>Unable to load registrations</h2>
-            <p>Check that your account is signed in and the backend is reachable.</p>
-          </section>
-        ) : null}
-        {!registrations.isLoading && sortedRegistrations.length === 0 ? (
-          <section className="empty-state account-empty-state">
-            <h2>No registrations yet</h2>
+            <h2>No upcoming tournaments</h2>
             <p>Browse tournaments and register for a match day when entries are open.</p>
-            <div className="registration-actions">
-              <a className="primary-action" href={ROUTES.TOURNAMENTS}>Browse tournaments</a>
-              <a className="secondary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>Registration history</a>
-            </div>
+            <a className="primary-action" href={ROUTES.TOURNAMENTS}>Browse tournaments</a>
           </section>
-        ) : null}
-
-        <div className="registration-list">
-          {sortedRegistrations.slice(0, 4).map((registration) => (
-            <article className="registration-list-item" key={registration.id}>
-              <div>
-                <span className="eyebrow">{registration.tournament.sport.name}</span>
-                <h2>{registration.tournament.title}</h2>
-                <p>
-                  {registration.category?.name ?? "Tournament registration"} · {registration.tournament.city.name} ·{" "}
-                  {formatDateRange(registration.tournament.startsAt, registration.tournament.endsAt)}
-                </p>
-              </div>
-              <dl className="registration-status-grid">
-                <div><dt>Status</dt><dd>{formatLabel(registration.status)}</dd></div>
-                <div><dt>Payment</dt><dd>{formatPaymentSummary(registration)}</dd></div>
-                <div><dt>Registered</dt><dd>{formatDate(registration.createdAt)}</dd></div>
-              </dl>
-              <div>
-                {registration.payment?.offlineInstructions ? (
-                  <p className="state-text compact-state">
-                    {registration.payment.offlineInstructions}
+        ) : (
+          <div className="registration-list">
+            {upcomingRegistrations.slice(0, 3).map((registration) => (
+              <article className="registration-list-item" key={registration.id}>
+                <div>
+                  <span className="eyebrow">{registration.tournament.sport.name}</span>
+                  <h2>{registration.tournament.title}</h2>
+                  <p>
+                    {registration.category?.name ?? "Tournament registration"} · {registration.tournament.city.name} ·{" "}
+                    {formatDateRange(registration.tournament.startsAt, registration.tournament.endsAt)}
                   </p>
-                ) : null}
+                </div>
+                <dl className="registration-status-grid">
+                  <div><dt>Status</dt><dd>{formatLabel(registration.status)}</dd></div>
+                  <div><dt>Payment</dt><dd>{formatPaymentSummary(registration)}</dd></div>
+                </dl>
                 <div className="registration-actions">
                   <a className="secondary-action" href={tournamentDetailRoute(registration.tournament.slug)}>
                     View tournament
                   </a>
-                  <a className="secondary-action" href={`${tournamentDetailRoute(registration.tournament.slug)}#fixtures-results`}>
-                    Fixtures and results
-                  </a>
-                  {registration.payment?.checkoutUrl ? (
-                    <a className="primary-action" href={registration.payment.checkoutUrl}>
-                      Continue payment
-                    </a>
-                  ) : null}
-                  {!registration.payment?.checkoutUrl && registration.payment?.onlinePaymentAvailable ? (
-                    <a className="secondary-action" href={ROUTES.ACCOUNT_REGISTRATIONS}>
-                      Continue payment
-                    </a>
-                  ) : null}
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className="organizer-panel">
+      <section className="organizer-panel" id="results">
         <div className="section-heading organizer-section-heading">
           <div>
-            <h2>Upcoming fixtures and results</h2>
+            <h2>Recent fixtures and results</h2>
             <p>Published fixture sets and completed results for your registered tournaments.</p>
           </div>
         </div>

@@ -63,6 +63,7 @@ export function OrganizerShell({
       <nav className="organizer-nav" aria-label="Organizer navigation">
         <a href={ROUTES.ORGANIZER_DASHBOARD}>Dashboard</a>
         <a href={ROUTES.ORGANIZER_TOURNAMENTS}>Tournaments</a>
+        <a href={ROUTES.SCORING}>Scoring</a>
         <a href={ROUTES.ORGANIZER_TOURNAMENT_NEW}>Create tournament</a>
         <button
           type="button"
