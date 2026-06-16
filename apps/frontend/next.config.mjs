@@ -7,12 +7,16 @@ const nextConfig = {
         source: "/:path*",
         headers: [
           {
+            key: "X-DNS-Prefetch-Control",
+            value: "on"
+          },
+          {
             key: "X-Content-Type-Options",
             value: "nosniff"
           },
           {
             key: "X-Frame-Options",
-            value: "DENY"
+            value: "SAMEORIGIN"
           },
           {
             key: "Referrer-Policy",
@@ -20,7 +24,7 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()"
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()"
           }
         ]
       }

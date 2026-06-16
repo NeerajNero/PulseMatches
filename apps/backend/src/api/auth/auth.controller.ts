@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import {
@@ -21,6 +22,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("signup")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @RateLimit({ bucket: "auth" })
   @ApiOperation({ summary: "Create a player or organizer account" })
   @ApiOkResponse({ type: AuthApiResponseDto })
@@ -29,6 +31,7 @@ export class AuthController {
   }
 
   @Post("login")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @RateLimit({ bucket: "auth" })
   @ApiOperation({ summary: "Log in with email and password" })
   @ApiOkResponse({ type: AuthApiResponseDto })

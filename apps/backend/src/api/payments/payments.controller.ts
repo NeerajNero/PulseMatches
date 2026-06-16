@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Param, Post, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { RoleType } from "@prisma/client";
 import { Request } from "express";
 import { RateLimit } from "../../common/rate-limit/rate-limit.decorator";
@@ -79,6 +80,7 @@ export class PaymentsController {
   }
 
   @Post("payments/webhooks/:provider")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @RateLimit({ bucket: "payment" })
   @ApiOperation({ summary: "Provider-neutral payment webhook endpoint" })
   @ApiHeader({ name: "x-razorpay-signature", required: false })
