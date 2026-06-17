@@ -1,0 +1,227 @@
+version: '3.8'
+
+x-backend-environment: &backend-environment
+  SERVICE_NAME: ${SERVICE_NAME:-matchflow-arena-api}
+  PORT: ${BACKEND_CONTAINER_PORT:-3010}
+  NODE_ENV: production
+  APP_VERSION: ${APP_VERSION:-0.1.0}
+  CORS_ORIGINS: ${CORS_ORIGINS}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-matchflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-matchflow_arena}
+  POSTGRES_DB: ${POSTGRES_DB:-matchflow_arena}
+  POSTGRES_USER: ${POSTGRES_USER:-matchflow}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
+  JWT_ACCESS_TOKEN_SECRET: ${JWT_ACCESS_TOKEN_SECRET}
+  JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
+  JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET}
+  JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-7d}
+  FE_APP_URL: ${FE_APP_URL}
+  NOTIFICATION_PROVIDER: ${NOTIFICATION_PROVIDER:-noop}
+  NOTIFICATION_FROM_EMAIL: ${NOTIFICATION_FROM_EMAIL}
+  NOTIFICATION_FROM_NAME: ${NOTIFICATION_FROM_NAME:-MatchFlow Arena}
+  NOTIFICATION_PROCESS_LIMIT: ${NOTIFICATION_PROCESS_LIMIT:-20}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-false}
+  SMTP_REJECT_UNAUTHORIZED: ${SMTP_REJECT_UNAUTHORIZED:-true}
+  SMTP_ALLOW_UNAUTH: ${SMTP_ALLOW_UNAUTH:-false}
+  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-manual}
+  PAYMENT_DEFAULT_CURRENCY: ${PAYMENT_DEFAULT_CURRENCY:-INR}
+  PAYMENT_MOCK_CHECKOUT_BASE_URL: ${PAYMENT_MOCK_CHECKOUT_BASE_URL:-}
+  PAYMENT_INTENT_EXPIRY_MINUTES: ${PAYMENT_INTENT_EXPIRY_MINUTES:-30}
+  PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+  PAYMENT_RECONCILIATION_PROVIDER: ${PAYMENT_RECONCILIATION_PROVIDER:-}
+  PAYMENT_RECONCILIATION_LIMIT: ${PAYMENT_RECONCILIATION_LIMIT:-25}
+  RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+  RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+  RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+  RAZORPAY_CHECKOUT_NAME: ${RAZORPAY_CHECKOUT_NAME:-MatchFlow Arena}
+  RAZORPAY_CHECKOUT_DESCRIPTION: ${RAZORPAY_CHECKOUT_DESCRIPTION:-Tournament registration fee}
+  EXPORT_MAX_ROWS: ${EXPORT_MAX_ROWS:-5000}
+  OPS_STALE_NOTIFICATION_MINUTES: ${OPS_STALE_NOTIFICATION_MINUTES:-30}
+  OPS_STALE_PAYMENT_INTENT_MINUTES: ${OPS_STALE_PAYMENT_INTENT_MINUTES:-60}
+  OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD: ${OPS_FAILED_NOTIFICATION_ALERT_THRESHOLD:-10}
+  OPS_FAILED_PAYMENT_ALERT_THRESHOLD: ${OPS_FAILED_PAYMENT_ALERT_THRESHOLD:-5}
+  RATE_LIMIT_TTL_SECONDS: ${RATE_LIMIT_TTL_SECONDS:-60}
+  RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-120}
+  AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS:-20}
+  PAYMENT_RATE_LIMIT_MAX_REQUESTS: ${PAYMENT_RATE_LIMIT_MAX_REQUESTS:-30}
+  EXPORT_RATE_LIMIT_MAX_REQUESTS: ${EXPORT_RATE_LIMIT_MAX_REQUESTS:-20}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-matchflow_arena}
+      POSTGRES_USER: ${POSTGRES_USER:-matchflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Secure: do not expose ports to host in production, keep inside docker network
+    expose:
+      - "5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-matchflow} -d ${POSTGRES_DB:-matchflow_arena}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matchflow
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    # Secure: do not expose ports to host in production, keep inside docker network
+    expose:
+      - "6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matchflow
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: always
+    expose:
+      - "3010"
+    environment:
+      <<: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3010/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - matchflow
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-MatchFlow Arena}
+    restart: always
+    expose:
+      - "3002"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-MatchFlow Arena}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - matchflow
+
+  # Optional Nginx/Caddy Reverse Proxy for VPS/Docker Compose deployments.
+  # Handles SSL termination and routes requests appropriately:
+  # - /api/* -> backend:3010
+  # - /health -> backend:3010
+  # - /* -> frontend:3002
+  proxy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - matchflow
+
+  # UTILITIES / ONE-OFF TASKS (Excluded from automatic startup via 'tools' profile)
+  backend-migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    profiles:
+      - tools
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *backend-environment
+    command: pnpm --filter @matchflow/backend prisma:deploy
+    restart: "no"
+    networks:
+      - matchflow
+
+  backend-seed:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    profiles:
+      - tools
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *backend-environment
+    command: pnpm --filter @matchflow/backend db:seed
+    restart: "no"
+    networks:
+      - matchflow
+
+  smoke:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    profiles:
+      - tools
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *backend-environment
+      API_URL: http://backend:3010
+    command: pnpm smoke:mvp
+    restart: "no"
+    networks:
+      - matchflow
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  matchflow:
+    driver: bridge

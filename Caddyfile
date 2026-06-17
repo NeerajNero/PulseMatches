@@ -1,0 +1,32 @@
+{
+    # Let's Encrypt email for certificate notifications
+    email {$CADDY_LETSENCRYPT_EMAIL:admin@matchflow.local}
+}
+
+# The site domain to host under (e.g. play.matchflow.arena or matchflow.example.com)
+{$SITE_DOMAIN:localhost} {
+    # Route API request to the backend service
+    reverse_proxy /api/* backend:3010
+    reverse_proxy /health backend:3010
+    reverse_proxy /health/ready backend:3010
+
+    # Route all other web traffic to the standalone Next.js frontend
+    reverse_proxy /* frontend:3002
+
+    # Enable compression
+    encode gzip zstd
+
+    # Headers for security
+    header {
+        # Disable FLoC tracking
+        Permissions-Policy "interest-cohort=()"
+        # Enable HSTS (HTTP Strict Transport Security)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent Clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
